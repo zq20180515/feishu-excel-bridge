@@ -20,6 +20,10 @@ test/*.mjs
 # 表单长截图切片（临时候图，用后即删）
 .formimg/
 
+# 图标预览/调试产物
+.iconpreview/
+.iconpreview-final/
+
 # 本地环境，不要提交
 .env
 .env.local
