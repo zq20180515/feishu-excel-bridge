@@ -1,8 +1,10 @@
 BTNExcel 桥 · 提交表单速查（纯文本版）
 表单地址：https://feishu.feishu.cn/share/base/form/shrcnwTXnFVAbMPOSeaOFwIAnbf
 
-【第 0 步 · 先替换】
-把本文中所有 <你的用户名> 替换为你的 GitHub 用户名（例如 zhangqiang）。
+仓库地址：https://github.com/zq20180515/feishu-excel-bridge
+插件地址：https://zq20180515.github.io/feishu-excel-bridge/
+
+（地址已填好，可直接整段复制）
 
 
 ────────────────────────────────
@@ -106,8 +108,8 @@ BTNExcel 桥
 ────────────────────────────────
 ⑩ 其他信息
 ────────────────────────────────
-GitHub 代码仓库：https://github.com/<你的用户名>/feishu-excel-bridge
-在线体验地址：https://<你的用户名>.github.io/feishu-excel-bridge/
+GitHub 代码仓库：https://github.com/zq20180515/feishu-excel-bridge
+在线体验地址：https://zq20180515.github.io/feishu-excel-bridge/
 
 说明：
 1. 本插件为纯前端实现，无自建后端服务，不向任何第三方服务器发送数据。所有 Excel 解析、图片提取与打包均在浏览器本地完成；附件上传使用多维表格官方 SDK 的 bitable.base.batchUploadFile（全局串行调用，遵守官方并发限制，不会打爆接口）。
@@ -122,4 +124,4 @@ GitHub 代码仓库：https://github.com/<你的用户名>/feishu-excel-bridge
 ────────────────────────────────
 1. GitHub 仓库已 push，Actions 变绿，Pages 地址能打开
 2. 已在飞书「自定义插件」里用线上地址实测过一遍导入 + 导出
-3. ⑩ 里的 <你的用户名> 已全部替换
+3. ⑩ 里的地址已填入真实仓库（zq20180515）

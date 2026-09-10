@@ -16,7 +16,7 @@
 
 | 方式 | 地址形式 | 成本 | 适用 |
 | --- | --- | --- | --- |
-| **A. GitHub Pages（推荐）** | `https://<用户名>.github.io/<仓库名>/` | 免费，无需备案 | 集团内部自用 + 提交表单 |
+| **A. GitHub Pages（推荐）** | `https://zq20180515.github.io/feishu-excel-bridge/` | 免费，无需备案 | 集团内部自用 + 提交表单 |
 | B. 公司内网服务器 | `https://插件域名/` | 需要一台机器 + **HTTPS 证书** | 不想依赖 GitHub |
 
 > ⚠️ 多维表格插件**必须用 HTTPS 加载**（`localhost` 除外）。GitHub Pages 自带 HTTPS，
@@ -203,11 +203,11 @@ WPS 嵌入单元格图片、标准浮动图片。附件字段有多张图时可�
 > 这里是自由填写。截图里那段说明意思是：如果代码托管在 GitHub，可以填仓库地址，
 > 方便审核方查看与后续更新。**建议填**，能加速审核。
 >
-> ⚠️ **把下面两处 `<你的用户名>` 换成实际 GitHub 用户名**，其余整段复制。
+> ✅ **地址已填好，整段直接复制即可。**
 
 ```
-GitHub 代码仓库：https://github.com/<你的用户名>/feishu-excel-bridge
-在线体验地址：https://<你的用户名>.github.io/feishu-excel-bridge/
+GitHub 代码仓库：https://github.com/zq20180515/feishu-excel-bridge
+在线体验地址：https://zq20180515.github.io/feishu-excel-bridge/
 
 说明：
 1. 本插件为纯前端实现，无自建后端服务，不向任何第三方服务器发送数据。
@@ -231,11 +231,12 @@ GitHub 代码仓库：https://github.com/<你的用户名>/feishu-excel-bridge
 
 ### 第 1 步：部署到 GitHub Pages
 
-详见 `DEPLOY.md`。核心就三步：建仓库 → push → 开启 Pages。
-完成后你会得到一个地址，形如：
+✅ **已完成**。代码已推送到 `main`，Actions 的 build 阶段全绿（含 151 项测试）。
+**唯一待做**：去仓库 `Settings → Pages → Source` 选 **`GitHub Actions`**，
+然后重跑一次 Actions，地址即生效：
 
 ```
-https://<你的用户名>.github.io/feishu-excel-bridge/
+https://zq20180515.github.io/feishu-excel-bridge/
 ```
 
 ### 第 2 步：自测这个线上地址

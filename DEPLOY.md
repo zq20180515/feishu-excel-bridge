@@ -53,14 +53,23 @@ git push -u origin main
 
 ---
 
-## 第 3 步：开启 GitHub Pages
+## 第 3 步：开启 GitHub Pages ⚠️ 最容易漏的一步
 
 仓库已经放了 `.github/workflows/deploy.yml`，push 之后会自动构建部署。你只需要打开开关：
 
 1. 进入仓库页面 → **Settings**（顶部标签栏）
 2. 左侧栏 → **Pages**
 3. **Build and deployment** → **Source** 选 **`GitHub Actions`**（不是 "Deploy from a branch"）
-4. 保存
+4. 不用点保存，改完自动生效
+
+> ⚠️ **这一步漏掉的症状**：Actions 里 `build` 阶段全绿（依赖、测试、构建都过），
+> 但 `deploy` 阶段失败，报错形如 `HttpError: Not Found ... /pages`。
+> 原因是 `actions/deploy-pages@v4` 要求仓库**已经启用 Pages 服务**，
+> 没有启用时它无处可部署。
+>
+> **事后补救**：回到这一步把 Source 改成 `GitHub Actions`，
+> 然后去 Actions 页面找到失败的那次运行，点 **Re-run all jobs** 重跑即可。
+> （不用重新 push，也不用改代码。）
 
 ---
 
