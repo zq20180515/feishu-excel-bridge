@@ -139,6 +139,7 @@ opdev upload
 
 - **[`DEPLOY.md`](./DEPLOY.md)** —— 从建仓库到 Pages 可用的完整命令
 - **[`SUBMIT.md`](./SUBMIT.md)** —— 提交表单每一项该填什么（可直接复制的文案）
+- **[`SUBMIT-CHECKLIST.txt`](./SUBMIT-CHECKLIST.txt)** —— 同上，纯文本版，填表时开一屏对照复制
 
 > ⚠️ 两个硬性要求：
 > 1. 插件地址**必须是 HTTPS**（`localhost` 除外）—— 飞书插件本身要求，且 `showSaveFilePicker`
@@ -272,10 +273,12 @@ ZIP 包内合理位置。SheetJS 会把后写入的部件丢到压缩包末尾�
 ├── .github/workflows/deploy.yml  push → 跑测试 → 构建 → 部署 GitHub Pages
 ├── DEPLOY.md                    部署到 GitHub Pages 的完整步骤
 ├── SUBMIT.md                    上架提交表单的逐项填写内容
+├── SUBMIT-CHECKLIST.txt         同上，纯文本速查版（填表时对照复制）
+├── assets/icon-512.png          插件图标（512×512 PNG，提交表单第 ⑦ 项用）
 ├── app.json                     appId + output（opdev 上传用）
 ├── block.json                   blockTypeID + url
 ├── samples/                     4 个可视样例 xlsx，可直接用 WPS 打开验证
-├── test/                        自测：roundtrip / render / compare-wps / make-samples
+├── test/                        自测：roundtrip / render / compare-wps / make-samples / make-icon
 └── src/
     ├── App.tsx                     两个 Tab：导入 / 导出 + 顶部反馈入口
     ├── styles.css                  素直风格：白卡 + 1px 边框 + 深青点缀
