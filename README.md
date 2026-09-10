@@ -121,6 +121,34 @@ opdev upload
 
 > 走这条路线时，`dist/` 的静态产物需要能被飞书 CDN 拉取；`opdev` 会自动打包上传，不用你自建服务器。
 
+### 方式 C：上架到插件市场（集团内部可见）
+
+多维表格的「自定义插件」面板里，对已添加的插件点 **`···` → 发布**，会跳到一个
+**「提交多维表格插件」表单**。填完提交后由多维表格团队评估，通过后所有（或指定范围内的）用户
+都能在插件市场里搜索安装。
+
+**不需要自己的服务器** —— 因为本插件是纯前端的，`dist/` 扔到任意静态托管即可。推荐组合：
+
+| 环节 | 做法 |
+| --- | --- |
+| 代码托管 | GitHub 仓库（Public） |
+| 插件地址 | **GitHub Pages**（自带 HTTPS，免费，无需备案） |
+| 自动发布 | `.github/workflows/deploy.yml`：push 到 `main` → 跑 151 项测试 → 构建 → 部署 |
+
+详细步骤见：
+
+- **[`DEPLOY.md`](./DEPLOY.md)** —— 从建仓库到 Pages 可用的完整命令
+- **[`SUBMIT.md`](./SUBMIT.md)** —— 提交表单每一项该填什么（可直接复制的文案）
+
+> ⚠️ 两个硬性要求：
+> 1. 插件地址**必须是 HTTPS**（`localhost` 除外）—— 飞书插件本身要求，且 `showSaveFilePicker`
+>    也只在安全上下文可用；
+> 2. **不要设置 `X-Frame-Options` / CSP `frame-ancestors`**，否则飞书 iframe 加载不了。
+>    GitHub Pages 默认无此限制，可以放心用。
+>
+> `vite.config.ts` 里 `base: './'` 用的是相对路径，所以**换任何仓库名 / 子路径都不用改代码**
+> —— 部署到 `https://user.github.io/whatever-name/` 也能直接跑。
+
 ---
 
 ## 三、图片是怎么被识别出来的
@@ -241,26 +269,33 @@ ZIP 包内合理位置。SheetJS 会把后写入的部件丢到压缩包末尾�
 ## 六、目录结构
 
 ```
-src/
-├── App.tsx                     两个 Tab：导入 / 导出
-├── styles.css                  素直风格：白卡 + 1px 边框 + 深青点缀
-├── components/
-│   ├── ImportPanel.tsx         拖拽解析 → 映射 → 选项 → 进度/结果
-│   ├── MappingEditor.tsx       多 sheet 字段映射（单列自适应，无横向滚动）
-│   ├── ExportPanel.tsx         数据表多选 + 嵌入方式 + 进度 + 定位文件
-│   ├── icons.tsx               线性图标集（无图标库依赖）
-│   └── ui.tsx                  Card / Notice / Progress / Segmented / Tip / Popover
-└── lib/
-    ├── types.ts                数据模型
-    ├── xml.ts                  极简 XML 工具（浏览器/Node 行为一致）
-    ├── field-meta.ts           字段类型常量、MIME、可导入类型
-    ├── infer.ts                值归一化 / 类型推断 / 日期数字解析
-    ├── excel-read.ts           xlsx 解析：值 + DISPIMG + 浮动图锚点
-    ├── excel-write.ts          xlsx 生成：数据 + 内嵌图/浮动图 + ZIP 规范化重打包
-    ├── base-api.ts             SDK 封装：建表/建字段/征用空白列/写记录/选项 id/串行上传
-    ├── value-convert.ts        Excel 值 ⇄ 多维表格值（含单选多选的 { id, text }）
-    ├── importer.ts             导入执行器
-    └── exporter.ts             导出执行器
+├── .github/workflows/deploy.yml  push → 跑测试 → 构建 → 部署 GitHub Pages
+├── DEPLOY.md                    部署到 GitHub Pages 的完整步骤
+├── SUBMIT.md                    上架提交表单的逐项填写内容
+├── app.json                     appId + output（opdev 上传用）
+├── block.json                   blockTypeID + url
+├── samples/                     4 个可视样例 xlsx，可直接用 WPS 打开验证
+├── test/                        自测：roundtrip / render / compare-wps / make-samples
+└── src/
+    ├── App.tsx                     两个 Tab：导入 / 导出 + 顶部反馈入口
+    ├── styles.css                  素直风格：白卡 + 1px 边框 + 深青点缀
+    ├── components/
+    │   ├── ImportPanel.tsx         拖拽解析 → 映射 → 选项 → 进度/结果（空白表跳过）
+    │   ├── MappingEditor.tsx       多 sheet 字段映射（单列自适应，无横向滚动）
+    │   ├── ExportPanel.tsx         数据表多选 + 嵌入方式 + 进度 + 定位文件
+    │   ├── icons.tsx               线性图标集（无图标库依赖）
+    │   └── ui.tsx                  Card / Notice / Progress / Segmented / Tip / Popover
+    └── lib/
+        ├── types.ts                数据模型
+        ├── xml.ts                  极简 XML 工具（浏览器/Node 行为一致）
+        ├── field-meta.ts           字段类型常量、MIME、可导入类型
+        ├── infer.ts                值归一化 / 类型推断 / 日期数字解析
+        ├── excel-read.ts           xlsx 解析：值 + DISPIMG + 浮动图锚点
+        ├── excel-write.ts          xlsx 生成：数据 + 内嵌图/浮动图 + ZIP 规范化重打包
+        ├── base-api.ts             SDK 封装：建表/建字段/征用空白列/写记录/选项 id/串行上传
+        ├── value-convert.ts        Excel 值 ⇄ 多维表格值（含单选多选的 { id, text }）
+        ├── importer.ts             导入执行器
+        └── exporter.ts             导出执行器
 ```
 
 ## 七、自测
