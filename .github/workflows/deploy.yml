@@ -1,0 +1,56 @@
+name: Deploy to GitHub Pages
+
+# 纯前端插件：构建 config 里 base 已是 './'，任何路径都能直接跑
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只跑一个部署；不取消进行中的，避免把线上产物打回旧版本
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 跑测试（151 项断言）
+        run: npm test
+
+      - name: 构建
+        run: npm run build
+
+      # 多维表格「自定义插件」里填的地址需要指向目录本身，
+      # 加一个 404.html 兜底，防止刷新时 404
+      - name: 补 SPA 兜底
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,21 @@
+node_modules/
+dist/
+
+# 构建产物与临时缓存
+*.log
+.DS_Store
+.vite/
+vite.config.ts.timestamp-*.mjs
+
+# 测试编译产物（esbuild 生成，跑测试时自动重建）
+test/*.cjs
+test/*.mjs
+
+# 本地环境，不要提交
+.env
+.env.local
+.env.*.local
+
+# 编辑器
+.vscode/
+.idea/

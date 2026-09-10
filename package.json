@@ -1,0 +1,33 @@
+{
+  "name": "feishu-excel-bridge",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "飞书多维表格插件：Excel 原样导入（图片/附件自动转附件字段）+ 带图导出",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "npm run test:roundtrip && npm run test:render",
+    "test:roundtrip": "esbuild test/roundtrip.ts --bundle --platform=node --format=cjs --target=node20 --outfile=test/roundtrip.cjs && node test/roundtrip.cjs",
+    "test:render": "esbuild test/render.ts --bundle --platform=node --format=cjs --target=node20 --outfile=test/render.cjs && node test/render.cjs",
+    "test:compare": "node test/compare-wps.py",
+    "make:samples": "esbuild test/make-samples.ts --bundle --platform=node --format=cjs --target=node20 --outfile=test/make-samples.cjs && node test/make-samples.cjs"
+  },
+  "dependencies": {
+    "@lark-base-open/js-sdk": "^0.5.0",
+    "jszip": "^3.10.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "esbuild": "^0.24.0",
+    "linkedom": "^0.18.13",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
