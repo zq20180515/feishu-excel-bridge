@@ -11,6 +11,12 @@ vite.config.ts.timestamp-*.mjs
 test/*.cjs
 test/*.mjs
 
+# 隧道代理运行日志
+.bridge.log
+.push.log
+.probe*.log
+.lsr.log
+
 # 本地环境，不要提交
 .env
 .env.local
