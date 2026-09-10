@@ -104,3 +104,72 @@ git config --local https.proxy http://127.0.0.1:7899
 > 判断方法：`curl --interface <隧道网卡IP> https://github.com` 能通，
 > 但 `git ls-remote` 不通 → 就是这个情况。
 > 解法就是起一个 `bind()` 到隧道网卡的本地 CONNECT 代理，让 git 走它。
+
+---
+
+## 收工清理（用完必做）
+
+push 完成后，跟着下面 4 步把环境还原干净，避免影响日常使用：
+
+### 1. 停掉隧道代理进程（监听 7899）
+
+```bash
+# 先找到监听 7899 的 PID
+netstat -ano | grep 7899
+
+# 结束它（Git Bash 下必须加 MSYS_NO_PATHCONV=1，否则 /PID 会被当成路径）
+MSYS_NO_PATHCONV=1 taskkill /PID <PID> /F
+
+# 复查：应无输出
+netstat -ano | grep 7899
+```
+
+### 2. 移除 git 仓库级代理配置
+
+```bash
+cd feishu-excel-bridge
+git config --local --unset http.proxy
+git config --local --unset https.proxy
+
+# 复查：应显示"无代理"
+git config --local --list | grep -i proxy
+```
+
+### 3. 停掉 Vite 开发服务器（若开着）
+
+`npm run dev` 会**常驻 5173 端口并绑在 `0.0.0.0`**（局域网内其他机器也能访问），
+用完记得关：
+
+```bash
+netstat -ano | grep ":5173"     # 找 PID
+MSYS_NO_PATHCONV=1 taskkill /PID <PID> /F
+```
+
+### 4. 确认本地环境无残留
+
+| 检查项 | 命令 / 方法 | 期望结果 |
+| --- | --- | --- |
+| 项目端口 | `netstat -ano \| grep -E ":5173\|:7899\|:4180"` | 无 LISTENING |
+| node/python 进程 | `tasklist \| grep -iE "node\.exe\|python\.exe"` | 空 |
+| 全局 git 代理 | `git config --global --list \| grep -i proxy` | 空（**本方案从不改全局**） |
+| Windows 系统代理 | 设置 → 网络和 Internet → 代理 | 保持你原来的状态（本方案**不动系统代理**） |
+| VPN 软件 | 自行决定是否退出（**不是本方案启动的**） | — |
+
+> **本方案的全部副作用只有两处**：一个监听 `127.0.0.1:7899` 的 python 进程
+> + 本仓库的两条 `--local` git 配置。**从不写全局 git 配置，从不改系统代理。**
+> 所以清理只需上面 1、2 两步，其余是顺手检查开发服务器。
+
+### 踩坑记录
+
+- **`taskkill //PID` 在 Git Bash 下会报「无效参数」** —— `//` 被转成了路径。
+  必须加 `MSYS_NO_PATHCONV=1` 并用单斜杠 `/PID`。
+- **`reg.exe` 被安全策略拉黑**，查系统代理改用 Python 的 `winreg`（只读）：
+  ```python
+  import winreg
+  k = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                     r'Software\Microsoft\Windows\CurrentVersion\Internet Settings')
+  winreg.QueryValueEx(k, 'ProxyEnable')
+  ```
+- 环境变量里的 `http_proxy=127.0.0.1:56190` 是**工具沙箱自己注入的**
+  （不是本方案建的，端口也不同），无需处理。
+
