@@ -17,6 +17,9 @@ test/*.mjs
 .probe*.log
 .lsr.log
 
+# 表单长截图切片（临时候图，用后即删）
+.formimg/
+
 # 本地环境，不要提交
 .env
 .env.local
