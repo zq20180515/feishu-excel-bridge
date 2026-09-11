@@ -231,16 +231,26 @@ export async function getAttachmentUrls(table: AnyTable, tokens: string[], field
 let uploadChain: Promise<unknown> = Promise.resolve()
 
 /**
- * 单批 / 单文件上传的超时上限（毫秒）。
+ * 上传超时的下限 / 上限（毫秒）。
  *
  * ⚠️ 这个保护是必须的：飞书的上传接口在个别文件上会**既不返回也不报错**地挂住，
- * 而 `await` 会一直等下去 —— 表现就是导入卡在某个数字上再也不会动
- * （实测 439 个附件卡在第 210 个，即第 22 批）。
- * 超时后把该文件记为失败并继续，总比整个导入永久卡死强。
+ * 而 `await` 会一直等下去 —— 表现就是导入卡在某个数字上不动。
+ *
+ * 但超时**不能一刀切**：实测 439 个附件的导入里，卡住几分钟后进度又自己往前走了，
+ * 说明那一批并非挂死，而是**量太大传得慢**（几十 MB 的附件 + 串行上传）。
+ * 所以改成按字节量给额度，别把大文件误杀。
  */
-const UPLOAD_TIMEOUT_MS = 90_000
-/** 批量失败降级为逐个上传时用更短的超时（此时已知这批有问题，不必再等那么久） */
-const UPLOAD_ONE_TIMEOUT_MS = 45_000
+const UPLOAD_TIMEOUT_MIN_MS = 90_000
+const UPLOAD_TIMEOUT_MAX_MS = 10 * 60_000
+/** 每 MB 给多少毫秒的额度（串行上传，留得宽松些） */
+const UPLOAD_TIMEOUT_PER_MB_MS = 4_000
+
+/** 按待传字节数估算超时额度：大文件给更久，但也设上限避免真的无限等 */
+function timeoutForFiles(files: { size?: number }[], floorMs = UPLOAD_TIMEOUT_MIN_MS): number {
+  const totalMb = files.reduce((n, f) => n + (f.size || 0), 0) / 1024 / 1024
+  const budget = Math.ceil(totalMb * UPLOAD_TIMEOUT_PER_MB_MS)
+  return Math.min(UPLOAD_TIMEOUT_MAX_MS, Math.max(floorMs, budget))
+}
 
 /**
  * 给 Promise 套一层超时；超时抛出可读错误，交由上层记为失败并继续。
@@ -271,78 +281,120 @@ export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promis
   })
 }
 
+/** 单个附件的上传耗时记录，用于事后定位「哪张图拖慢了整次导入」 */
+export type UploadFileTiming = {
+  name: string
+  /** 字节数 */
+  size: number
+  /** 耗时（毫秒） */
+  ms: number
+  ok: boolean
+  message?: string
+}
+
 export type UploadOutcome = {
   tokens: (string | null)[]
   failures: { index: number; name: string; message: string }[]
+  /** 每个文件的耗时明细（批量成功的按文件均值摊分） */
+  timings: UploadFileTiming[]
+}
+
+/** 上传进度；`current` 让界面能显示「正在上传 xxx.jpg（3.2 MB）」 */
+export type UploadProgressInfo = {
+  done: number
+  total: number
+  current?: { name: string; size: number }
 }
 
 export function uploadFilesSerial(
   files: File[],
   batchSize = 10,
-  onProgress?: (done: number, total: number, current?: string) => void,
+  onProgress?: (info: UploadProgressInfo) => void,
   opts?: { timeoutMs?: number; shouldStop?: () => boolean },
 ): Promise<UploadOutcome> {
-  const timeoutMs = opts?.timeoutMs ?? UPLOAD_TIMEOUT_MS
-  // 显式传入 timeoutMs 时（例如测试）单个上传也用它，避免等待时间被下面的常量拉长
-  const oneTimeoutMs = opts?.timeoutMs
-    ? Math.min(opts.timeoutMs, UPLOAD_ONE_TIMEOUT_MS)
-    : UPLOAD_ONE_TIMEOUT_MS
   const run = async (): Promise<UploadOutcome> => {
     const tokens: (string | null)[] = new Array(files.length).fill(null)
     const failures: UploadOutcome['failures'] = []
+    const timings: UploadFileTiming[] = []
     let done = 0
     const size = Math.max(1, batchSize)
+    const report = (current?: UploadProgressInfo['current']) =>
+      onProgress?.({ done, total: files.length, current })
 
     /** 单文件兜底上传：批量没返回这个文件的 token 时走这里，顺便把「哪张图有问题」定位出来 */
     const uploadOne = async (idx: number): Promise<void> => {
       const f = files[idx]
-      // 先报「正在传哪个」，卡住时用户也能看到是哪个文件
-      onProgress?.(done, files.length, f.name)
+      const budget = opts?.timeoutMs ?? timeoutForFiles([f], 45_000)
+      // 先报「正在传哪个、多大」，卡住时用户也能看出是哪张图在拖
+      report({ name: f.name, size: f.size || 0 })
+      const t0 = Date.now()
+      let ok = false
+      let msg: string | undefined
       try {
         const res = await withTimeout(
           (bitable.base as any).batchUploadFile([f]),
-          oneTimeoutMs,
+          budget,
           `附件「${f.name}」`,
         )
         const t = Array.isArray(res) ? res[0] : undefined
-        if (t) tokens[idx] = t
-        else failures.push({ index: idx, name: f.name, message: '上传未返回 token' })
+        if (t) {
+          tokens[idx] = t
+          ok = true
+        } else {
+          msg = '上传未返回 token'
+        }
       } catch (err) {
-        failures.push({ index: idx, name: f.name, message: String((err as Error)?.message ?? err) })
+        msg = String((err as Error)?.message ?? err)
       }
+      if (!ok) failures.push({ index: idx, name: f.name, message: msg ?? '上传失败' })
+      timings.push({ name: f.name, size: f.size || 0, ms: Date.now() - t0, ok, message: msg })
       done++
     }
 
     for (let i = 0; i < files.length; i += size) {
       if (opts?.shouldStop?.()) break
       const slice = files.slice(i, i + size)
+      const budget = opts?.timeoutMs ?? timeoutForFiles(slice)
+      const batchMb = slice.reduce((n, f) => n + (f.size || 0), 0) / 1024 / 1024
+      const batchStart = Date.now()
+
+      // 先把「本批有多少、多大」报出去 —— 大附件慢的时候用户能对上号
+      report({ name: `本批 ${slice.length} 个（${batchMb.toFixed(1)} MB）`, size: 0 })
 
       try {
         const res = await withTimeout(
           (bitable.base as any).batchUploadFile(slice),
-          timeoutMs,
-          `第 ${i + 1}–${i + slice.length} 个附件批量上传`,
+          budget,
+          `第 ${i + 1}–${i + slice.length} 个附件（${batchMb.toFixed(1)} MB）`,
         )
         const list: string[] = Array.isArray(res) ? res : []
         slice.forEach((f, k) => {
           if (list[k]) tokens[i + k] = list[k]
         })
       } catch {
-        // 整批失败（含超时）：不在这里记失败，交给下面的逐个兜底去定位到具体文件
+        // 整批失败（含超时）：不在这里记失败，交给下面的逐个兜底去定位具体文件
       }
 
-      for (let k = 0; k < slice.length; k++) {
-        const idx = i + k
-        if (tokens[idx]) {
-          done++
-          continue
+      const batchMs = Date.now() - batchStart
+      if (slice.every((_f, k) => !!tokens[i + k])) {
+        // 批量成功：接口不提供单文件耗时，按文件均摊
+        const each = Math.round(batchMs / slice.length)
+        slice.forEach((f) => timings.push({ name: f.name, size: f.size || 0, ms: each, ok: true }))
+        done += slice.length
+      } else {
+        for (let k = 0; k < slice.length; k++) {
+          const idx = i + k
+          if (tokens[idx]) {
+            done++
+            continue
+          }
+          if (opts?.shouldStop?.()) break
+          await uploadOne(idx)
         }
-        if (opts?.shouldStop?.()) break
-        await uploadOne(idx)
       }
-      onProgress?.(done, files.length)
+      report()
     }
-    return { tokens, failures }
+    return { tokens, failures, timings }
   }
 
   const p = uploadChain.then(run, run)

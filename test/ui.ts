@@ -396,6 +396,8 @@ async function main() {
   ok(upOut.failures.length === 0, '正常情况无失败项')
   ok(upOut.tokens.length === 4 && upOut.tokens.every(Boolean), '每个文件都拿到 token')
   ok(stubState.calls.length === 1, '整批一次调用完成', { calls: stubState.calls })
+  ok(upOut.timings.length === 4, '返回每个文件的耗时明细', { n: upOut.timings.length })
+  ok(upOut.timings.every((t) => t.ok && t.ms >= 0), '正常上传的明细标记为成功')
 
   // ② 批量返回不全 → 必须逐个兜底（修复前这里是个空循环，会静默丢文件）
   resetUploadStub()
@@ -423,6 +425,9 @@ async function main() {
     msg: upOut.failures[0]?.message,
   })
   ok(upOut.tokens.every((t) => t === null), '超时的文件 token 保持空（上层据此跳过该单元格）')
+  ok(upOut.timings.length === 2 && upOut.timings.every((t) => !t.ok), '超时的文件也写进耗时明细并标记失败', {
+    n: upOut.timings.length,
+  })
 
   // ④ 取消：shouldStop 为真时不发起任何上传
   resetUploadStub()

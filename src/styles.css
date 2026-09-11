@@ -1954,6 +1954,15 @@ select.input {
   white-space: nowrap;
 }
 
+/* 底部栏右侧的动作组（复制日志 / 取消 等） */
+.footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,

@@ -11,6 +11,7 @@ import {
   readOptionMap,
   uploadFilesSerial,
 } from './base-api'
+import type { UploadFileTiming } from './base-api'
 import { rawToText } from './infer'
 import { cellKey } from './types'
 import type { FieldBrief, MediaRef, SourceColumn, SourceSheet } from './types'
@@ -45,6 +46,8 @@ export type ImportResult = {
   errors: { sheet: string; row: number; column: string; message: string }[]
   /** 用户中途取消（已写入的数据表与记录不会回滚） */
   cancelled?: boolean
+  /** 附件上传耗时明细（按耗时降序），用于定位「哪张图拖慢了整次导入」 */
+  uploadTimings?: UploadFileTiming[]
 }
 
 export type ImportOptions = {
@@ -54,6 +57,17 @@ export type ImportOptions = {
   shouldStop?: () => boolean
   onProgress?: (p: ImportProgress) => void
 }
+
+/** 人类可读的体积 */
+function fmtSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B'
+  const mb = bytes / 1024 / 1024
+  if (mb >= 1) return `${mb.toFixed(1)} MB`
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`
+}
+
+/** 单个附件超过这个耗时就算「慢」，会汇总进结果里 */
+const SLOW_UPLOAD_MS = 8_000
 
 type Resolved = {
   column: SourceColumn
@@ -136,22 +150,27 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
   })
 
   const mediaBySheet = new Map<number, Map<string, MediaRef[]>>()
+  /** 附件上传耗时明细（保留到结果里，用于定位是哪张图拖慢了整次导入） */
+  let uploadTimings: UploadFileTiming[] = []
   if (stop()) return cancelledResult()
   if (tasks.length) {
     report('media', '正在上传附件图片', 0, tasks.length, `共 ${tasks.length} 个图片/附件`)
-    const { tokens, failures } = await uploadFilesSerial(
+    const { tokens, failures, timings } = await uploadFilesSerial(
       tasks.map((t) => t.file),
       opts.uploadBatchSize,
-      (done, total, current) =>
+      ({ done, total, current }) =>
         report(
           'media',
           '正在上传附件图片',
           done,
           total,
-          current ? `正在上传 ${current}` : `第 ${done} / ${total} 个`,
+          current
+            ? `正在上传 ${current.name}${current.size ? `（${fmtSize(current.size)}）` : ''}`
+            : `已完成 ${done} / ${total} 个`,
         ),
       { shouldStop: opts.shouldStop },
     )
+    uploadTimings = timings
     tasks.forEach((t, i) => {
       const token = tokens[i]
       if (!token) return
@@ -174,6 +193,29 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
     })
     for (const f of failures) {
       errors.push({ sheet: '—', row: -1, column: '附件', message: `附件「${f.name}」上传失败：${f.message}` })
+    }
+
+    /*
+     * 汇总「慢附件」—— 这是「进度长时间不动」最常见的原因：
+     * 不是卡死，而是某个几十 MB 的文件在串行上传里慢慢传。
+     * 把文件名和体积列出来，用户才知道该去处理哪张图。
+     */
+    const totalBytes = timings.reduce((n, t) => n + t.size, 0)
+    const slow = timings.filter((t) => t.ok && t.ms > SLOW_UPLOAD_MS).sort((a, b) => b.ms - a.ms)
+    if (slow.length > 0) {
+      const top = slow
+        .slice(0, 5)
+        .map((t) => `${t.name}（${fmtSize(t.size)}，${(t.ms / 1000).toFixed(1)} 秒）`)
+      warnings.push(
+        `有 ${slow.length} 个附件单个上传耗时超过 ${SLOW_UPLOAD_MS / 1000} 秒` +
+          `（本次共 ${timings.length} 个附件，合计 ${fmtSize(totalBytes)}）。` +
+          `最慢的是：${top.join('、')}。附件只能串行上传，超大文件会让进度长时间停在同一处。`,
+      )
+    } else if (totalBytes > 100 * 1024 * 1024) {
+      warnings.push(
+        `本次共上传 ${timings.length} 个附件，合计 ${fmtSize(totalBytes)}。` +
+          '附件必须串行上传（飞书接口限制），体积越大耗时越长，属正常现象。',
+      )
     }
   }
 
@@ -480,5 +522,5 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
     })
   }
 
-  return { tables: results, warnings, errors }
+  return { tables: results, warnings, errors, uploadTimings }
 }

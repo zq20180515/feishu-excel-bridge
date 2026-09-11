@@ -1,6 +1,16 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MappingEditor from './MappingEditor'
-import { Card, CompletionCard, Notice, RingProgress, Steps, Tip } from './ui'
+import {
+  Card,
+  CompletionCard,
+  Notice,
+  RingProgress,
+  Steps,
+  Tip,
+  copyText,
+  formatBytes,
+  formatDuration,
+} from './ui'
 import { IconImage, IconInfo, IconRetry, IconSheetImage, IconTable, IconUpload } from './icons'
 import { listFields } from '../lib/base-api'
 import { parseWorkbookFile } from '../lib/excel-read'
@@ -61,6 +71,21 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
   const lastFile = useRef<File | null>(null)
   /** 置 true 后导入器在下一个检查点退出（已写入的部分不回滚） */
   const stopRef = useRef(false)
+  /**
+   * 运行页的秒表。
+   * 附件是串行上传的，几十 MB 的文件会让进度停在同一处好几分钟 ——
+   * 有秒表用户才能确认「它在动」而不是卡死了。
+   */
+  const [elapsed, setElapsed] = useState(0)
+  const [copiedDiag, setCopiedDiag] = useState(false)
+
+  useEffect(() => {
+    if (phase !== 'running') return
+    const t0 = Date.now()
+    setElapsed(0)
+    const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000)
+    return () => window.clearInterval(timer)
+  }, [phase])
 
   const pushLog = (s: string) => setLogs((p) => [...p.slice(-300), s])
 
@@ -169,6 +194,39 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
     return list
   }, [totalMedia])
 
+  /** 附件总体积 —— 直接决定上传要花多久，提前告诉用户，避免误以为卡死 */
+  const totalMediaBytes = liveSheets.reduce(
+    (n, s) =>
+      n +
+      [...s.mediaByCell.values()].reduce(
+        (m, files) => m + files.reduce((k, f) => k + (f.size || 0), 0),
+        0,
+      ),
+    0,
+  )
+
+  /** 把当前状态 + 日志拼成一段可粘贴的诊断文本（卡住时用来反馈） */
+  const copyDiagnostics = async () => {
+    const text = [
+      'BTNExcel 桥 · 导入诊断',
+      `版本：${typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'}`,
+      `文件：${parsed?.fileName ?? '—'}`,
+      `附件：${totalMedia} 个，合计 ${formatBytes(totalMediaBytes)}`,
+      `已用时：${formatDuration(elapsed)}`,
+      `当前阶段：${progress?.phase ?? '—'}`,
+      `进度：${progress?.done ?? 0} / ${progress?.total ?? 0}`,
+      progress?.detail ? `正在处理：${progress.detail}` : '',
+      '',
+      '—— 日志 ——',
+      ...logs,
+    ]
+      .filter((l) => l !== '')
+      .join('\n')
+    const okCopy = await copyText(text)
+    setCopiedDiag(okCopy)
+    window.setTimeout(() => setCopiedDiag(false), 1800)
+  }
+
   /** 回到配置态，方便连续导入多份文件 */
   const resetImport = () => {
     setParsed(null)
@@ -196,18 +254,22 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
           currentStage={progress?.stage}
         />
         <div className="footer-bar">
-          <span className="muted">导入进行中，请勿关闭此面板</span>
-          <button
-            className="btn ghost"
-            style={{ marginLeft: 'auto' }}
-            disabled={cancelling}
-            onClick={() => {
-              stopRef.current = true
-              setCancelling(true)
-            }}
-          >
-            {cancelling ? '正在停止…' : '取消'}
-          </button>
+          <span className="muted">导入中 · 已用时 {formatDuration(elapsed)}</span>
+          <span className="footer-actions">
+            <button className="btn ghost xs" onClick={() => void copyDiagnostics()}>
+              {copiedDiag ? '已复制' : '复制日志'}
+            </button>
+            <button
+              className="btn ghost xs"
+              disabled={cancelling}
+              onClick={() => {
+                stopRef.current = true
+                setCancelling(true)
+              }}
+            >
+              {cancelling ? '正在停止…' : '取消'}
+            </button>
+          </span>
         </div>
       </div>
     )
@@ -273,6 +335,23 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
                 {result.errors
                   .slice(0, 100)
                   .map((e) => `${e.sheet}${e.row > 0 ? ` 第${e.row}行` : ''} · ${e.column} → ${e.message}`)
+                  .join('\n')}
+              </div>
+            </>
+          )}
+
+          {/* 附件耗时排行 —— 进度长时间不动时，一眼看出是哪张图在拖 */}
+          {result.uploadTimings && result.uploadTimings.length > 0 && (
+            <>
+              <div className="log-title" style={{ color: 'var(--text-3)' }}>
+                附件上传耗时（最慢 20 个 / 共 {result.uploadTimings.length} 个）
+              </div>
+              <div className="log">
+                {result.uploadTimings
+                  .filter((t) => t.ok)
+                  .sort((a, b) => b.ms - a.ms)
+                  .slice(0, 20)
+                  .map((t) => `${(t.ms / 1000).toFixed(1)}s\t${formatBytes(t.size)}\t${t.name}`)
                   .join('\n')}
               </div>
             </>
@@ -453,7 +532,10 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
               />
               {totalMedia > 0 && (
                 <Notice>
-                  <IconImage size={13} /> 识别到 <b>{totalMedia}</b> 个图片/附件，已默认放进「附件」字段；导入时会串行上传到多维表格。
+                  <IconImage size={13} /> 识别到 <b>{totalMedia}</b> 个图片/附件
+                  {totalMediaBytes > 0 ? `（合计 ${formatBytes(totalMediaBytes)}）` : ''}，已默认放进「附件」字段。
+                  附件只能 <b>串行上传</b>，体积越大耗时越长 —— 几百个附件通常要几分钟到十几分钟；
+                  进度长时间停在同一处时，多半是某个大文件正在传，可以点「复制日志」查看正在传哪个。
                 </Notice>
               )}
               <Notice kind="warn">

@@ -2,6 +2,43 @@ import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react
 import type { ReactNode } from 'react'
 import { IconCheck, IconError, IconInfo, IconWarn } from './icons'
 
+/* ------------------------------- 小工具 ------------------------------- */
+
+/** 人类可读的体积，如 `3.2 MB` */
+export function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B'
+  const mb = bytes / 1024 / 1024
+  if (mb >= 1) return `${mb.toFixed(1)} MB`
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`
+}
+
+/** 秒 → `2 分 13 秒` / `45 秒` */
+export function formatDuration(sec: number): string {
+  const s = Math.max(0, Math.floor(sec))
+  const m = Math.floor(s / 60)
+  return m > 0 ? `${m} 分 ${s % 60} 秒` : `${s} 秒`
+}
+
+/** 复制文本；剪贴板被沙箱拒绝时退化为 execCommand */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    try {
+      const el = document.createElement('textarea')
+      el.value = text
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
 /* ------------------------------- 卡片 ------------------------------- */
 
 export function Card({
