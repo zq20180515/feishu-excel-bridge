@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 import { FT, isImageMime } from './field-meta'
-import { fetchAllRecords, getAttachmentUrls, getTable, orderedFields } from './base-api'
+import { fetchAllRecords, getAttachmentUrls, getTable, orderedFields, withTimeout } from './base-api'
 import { bitableValueToExcel, extractAttachments, guessExtFromMime } from './value-convert'
 import { buildXlsxBlob } from './excel-write'
 import type { OutCellImage, OutImage, OutSheet } from './excel-write'
@@ -85,6 +85,24 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, idx: numbe
   })
   await Promise.all(workers)
   return out
+}
+
+/**
+ * 单个附件下载的超时（毫秒）。
+ * 与上传同理：一个挂起的请求不能把整次导出拖死。
+ */
+const IMAGE_FETCH_TIMEOUT_MS = 60_000
+
+/** 构造超时信号；老环境不支持 AbortSignal.timeout 时降级为不超时 */
+function timeoutSignal(ms: number): AbortSignal | undefined {
+  try {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+      return AbortSignal.timeout(ms)
+    }
+  } catch {
+    /* 忽略 */
+  }
+  return undefined
 }
 
 function safeFileStamp(): string {
@@ -242,11 +260,15 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
         const first = tasksInGroup[0]
         let urls: string[] = []
         try {
-          urls = await getAttachmentUrls(
-            table,
-            tasksInGroup.map((t) => t.token),
-            first.fieldId,
-            first.recordId,
+          urls = await withTimeout(
+            getAttachmentUrls(
+              table,
+              tasksInGroup.map((t) => t.token),
+              first.fieldId,
+              first.recordId,
+            ),
+            30_000,
+            '获取附件下载地址',
           )
         } catch {
           urls = []
@@ -258,7 +280,7 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
             return
           }
           try {
-            const res = await fetch(url)
+            const res = await fetch(url, { signal: timeoutSignal(IMAGE_FETCH_TIMEOUT_MS) })
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const buf = await res.arrayBuffer()
             const mime = res.headers.get('content-type') || task.type

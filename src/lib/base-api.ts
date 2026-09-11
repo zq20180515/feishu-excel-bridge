@@ -242,8 +242,11 @@ const UPLOAD_TIMEOUT_MS = 90_000
 /** 批量失败降级为逐个上传时用更短的超时（此时已知这批有问题，不必再等那么久） */
 const UPLOAD_ONE_TIMEOUT_MS = 45_000
 
-/** 给 Promise 套一层超时；超时抛出可读错误，交由上层记为失败并继续 */
-function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+/**
+ * 给 Promise 套一层超时；超时抛出可读错误，交由上层记为失败并继续。
+ * 导出给 exporter 复用 —— SDK 调用挂起是各处的共同风险。
+ */
+export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     let settled = false
     const timer = setTimeout(() => {
