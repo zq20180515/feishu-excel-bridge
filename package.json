@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "飞书多维表格插件：Excel 原样导入（图片/附件自动转附件字段）+ 带图导出",
+  "output": "dist",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
