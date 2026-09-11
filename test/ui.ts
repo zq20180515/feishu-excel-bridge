@@ -127,6 +127,9 @@ async function main() {
   })
   ok(!host.querySelector('.success-wrap'), '空态下不渲染完成页')
   ok(!host.querySelector('.footer-bar'), '空态下不渲染底部操作栏')
+  ok(!!host.querySelector('.ftype-info'), '格式说明收进 .ftype-info（? 图标）')
+  ok(!/常用格式都能直接拖入/.test(html), '不再渲染整段格式说明的提示条（改成悬停查看）')
+  ok(!!host.querySelector('.hero'), 'hero 与格式徽章可以共存（hero 在上）')
 
   /* ============ 3. 导出面板：选项行 + 底部栏 ============ */
   await act(async () => {
@@ -147,6 +150,12 @@ async function main() {
   ok(!!host.querySelector('.footer-bar .btn.primary'), '底部栏有主按钮（近黑实底）')
   ok(!!host.querySelector('.segmented'), '嵌图方式用分段控件')
   ok(!host.querySelector('.success-wrap'), '未导出时不渲染完成页')
+  ok(!/把附件里的图片嵌入单元格/.test(html), '「把附件里的图片嵌入单元格」开关已移除（与嵌图方式重复）')
+  ok(/合并为一个 Excel/.test(html), '新增「合并为一个 Excel」选项')
+  ok(/拆分多个 Excel/.test(html), '新增「拆分多个 Excel」选项')
+  const optGroups = host.querySelectorAll('.opt-group').length
+  ok(optGroups === 2, '导出选项分「导出方式 / 图片嵌入方式」两组', { optGroups })
+  ok(!host.querySelector('.opt-group.disabled'), '选项组不再有整体禁用态（嵌图开关已移除）')
 
   /* ============ 4. 步骤条（各阶段） ============ */
   console.log('\n=== 4. 步骤条各阶段 ===')
@@ -213,6 +222,48 @@ async function main() {
   const r2bar = r2.querySelector('.ring-wrap') as unknown as { getAttribute?: (n: string) => string | null }
   ok(r2bar?.getAttribute?.('aria-valuenow') === null, '不确定态不暴露 aria-valuenow')
 
+  /* ---- 阶段清单（传 stages + currentStage） ---- */
+  await act(async () => {
+    root.render(
+      createElement('div', { id: 'r3' },
+        createElement(RingProgress, {
+          done: 62,
+          total: 91,
+          label: '正在写入记录',
+          detail: '员工档案 · 第 62 / 91 行',
+          stages: [
+            { key: 'parse', label: '解析工作表与表头' },
+            { key: 'media', label: '上传附件图片' },
+            { key: 'fields', label: '创建数据表与字段' },
+            { key: 'records', label: '写入记录' },
+          ],
+          currentStage: 'media',
+        })),
+    )
+  })
+  const r3 = document.getElementById('r3')!
+  ok(!!r3.querySelector('.stage-list'), '传 stages 时渲染阶段清单 .stage-list')
+  ok(r3.querySelectorAll('.stage').length === 4, '阶段清单共 4 项', {
+    got: r3.querySelectorAll('.stage').length,
+  })
+  ok(r3.querySelectorAll('.stage.done').length === 1, '当前阶段之前的项标 done', {
+    got: r3.querySelectorAll('.stage.done').length,
+  })
+  ok(!!r3.querySelector('.stage.active'), '当前阶段标 active')
+  ok(!!r3.querySelector('.stage.active .spin'), '进行中的阶段显示转圈图标')
+  ok(r3.querySelectorAll('.stage .hollow').length === 2, '未开始的阶段显示空心圈', {
+    got: r3.querySelectorAll('.stage .hollow').length,
+  })
+  ok(r3.querySelector('.stage.done .sic svg') !== null, '已完成的阶段显示对勾图标')
+  ok(/62 \/ 91/.test(r3.textContent ?? ''), '进行中的阶段带上进度（62 / 91）')
+  ok(/62 \/ 91/.test(r3.textContent ?? ''), '进行中的阶段带上进度（62 / 91）')
+
+  // 不传 stages 时不应出现空清单
+  await act(async () => {
+    root.render(createElement('div', { id: 'r4' }, createElement(RingProgress, { done: 1, total: 2 })))
+  })
+  ok(!document.getElementById('r4')!.querySelector('.stage-list'), '不传 stages 时不渲染清单')
+
   /* ============ 6. 完成态卡片 ============ */
   console.log('\n=== 6. 完成态卡片 ===')
   await act(async () => {
@@ -263,6 +314,70 @@ async function main() {
   ok(/重新解析/.test(html), '「重新解析」按钮仍在')
   ok(/导入选项/.test(html), '「导入选项」折叠入口仍在')
   ok(/xlsx/.test(html) && /csv/.test(html), '仍提示支持 xlsx / csv')
+
+  /* ============ 8. 字段映射：字段名限长展示 ============ */
+  console.log('\n=== 8. 字段映射 ===')
+  const { default: MappingEditor } = await import('../src/components/MappingEditor')
+
+  const col = (i: number, header: string, enabled: boolean) => ({
+    key: `s::${i}`,
+    sheet: '员工档案',
+    col: i,
+    letter: String.fromCharCode(65 + i),
+    header,
+    samples: [],
+    valueCount: 3,
+    mediaCount: 0,
+    inferredType: 1,
+    enabled,
+    targetFieldId: '',
+    targetFieldName: header,
+    targetFieldType: 1,
+    typeTouched: false,
+  })
+
+  const sheetFixture = {
+    name: '员工档案',
+    matrix: [],
+    headerRowIndex: 0,
+    totalDataRows: 3,
+    mediaByCell: new Map(),
+    importTableName: '员工档案',
+    importMode: 'create' as const,
+    importTableId: '',
+    columns: [
+      col(0, '工号', true),
+      col(1, '云南贝泰妮生物科技集团股份有限公司采购部名称全称', true),
+      col(2, '是否转正', false),
+    ],
+  }
+
+  await act(async () => {
+    root.render(
+      createElement(
+        'div',
+        null,
+        createElement(Card, { title: '字段映射' },
+          createElement(MappingEditor, {
+            sheets: [sheetFixture],
+            tables: [{ id: 'tbl1', name: '员工档案' }],
+            onChange: () => {},
+            onLoadFields: async () => [],
+          })),
+      ),
+    )
+  })
+  html = host.innerHTML
+  ok(host.querySelectorAll('.fld-name').length === 3, '每个字段名用 .fld-name 渲染', {
+    got: host.querySelectorAll('.fld-name').length,
+  })
+  ok(!host.querySelector('.map-name input'), '未进入编辑态时字段名不是 input（超长文本不会撑破排版）')
+  ok(!!host.querySelector('.fld-name-inner'), '字段名有 .fld-name-inner 承载文本（溢出时才滚动）')
+  ok(/云南贝泰妮生物科技集团股份有限公司采购部名称全称/.test(html), '超长字段名完整保留在 DOM 里（不截断数据）')
+  ok(!!host.querySelector('.map-row.off'), '取消勾选的字段行带 .off（灰化 + 删除线）')
+  ok(!!host.querySelector('.map-arrow'), '映射行仍保留 → 指示符')
+  ok(!!host.querySelector('.tk-btn'), '字段类型仍是可点击胶囊 .tk-btn')
+  ok(!/每个工作表单独成表/.test(html), '已移除「每个工作表单独成表…」的说明文案')
 
   console.log(`\n${failed === 0 ? '真实组件渲染校验全部通过 ✅' : `失败 ${failed} 项 ❌`}`)
   process.exit(failed === 0 ? 0 : 1)

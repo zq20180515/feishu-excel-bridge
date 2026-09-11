@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FT, IMPORTABLE_TYPES, fieldTypeLabel, fieldTypeTone } from '../lib/field-meta'
 import type { FieldBrief, SourceColumn, SourceSheet, TableBrief } from '../lib/types'
 import { IconImage, IconLink, IconTable } from './icons'
@@ -21,10 +21,63 @@ function mappedTypeOf(col: SourceColumn, fields: FieldBrief[]): number {
   return hit ? hit.type : col.targetFieldType
 }
 
+/**
+ * 字段名：单行显示，超出容器宽度时自动来回滚动。
+ *
+ * 原表里的列名常常长短悬殊（「工号」和「云南贝泰妮生物科技集团采购部名称全称」），
+ * 直接铺开会把每行的类型列挤到不同位置，看着就错位。这里固定成单行 + 溢出滚动：
+ * 既保证每列对齐，又不会因为截断而看不到全名。
+ * 默认是只读按钮，点一下才切成 input 编辑。
+ */
+function FieldName({
+  text,
+  title,
+  onClick,
+}: {
+  text: string
+  title: string
+  onClick: () => void
+}) {
+  const boxRef = useRef<HTMLButtonElement | null>(null)
+  const innerRef = useRef<HTMLSpanElement | null>(null)
+  const [overflow, setOverflow] = useState(false)
+
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    const inner = innerRef.current
+    if (!box || !inner) return
+    // clientWidth 为 0 说明还没布局（例如测试环境），此时不做判断
+    const over = inner.scrollWidth - box.clientWidth
+    if (box.clientWidth > 0 && over > 4) {
+      setOverflow(true)
+      inner.style.setProperty('--fld-shift', `-${over + 2}px`)
+    } else {
+      setOverflow(false)
+      inner.style.removeProperty('--fld-shift')
+    }
+  }, [text])
+
+  return (
+    <button
+      type="button"
+      ref={boxRef}
+      className={overflow ? 'fld-name overflow' : 'fld-name'}
+      title={title}
+      onClick={onClick}
+    >
+      <span className="fld-name-inner" ref={innerRef}>
+        {text}
+      </span>
+    </button>
+  )
+}
+
 export default function MappingEditor({ sheets, tables, onChange, onLoadFields }: Props) {
   const [fieldCache, setFieldCache] = useState<Record<string, FieldBrief[]>>({})
   const inflight = useRef<Set<string>>(new Set())
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({})
+  /** 正在编辑字段名的列 key（null = 全部处于只读展示态） */
+  const [editingKey, setEditingKey] = useState<string | null>(null)
 
   // 追加模式下按需加载目标表的字段清单
   useEffect(() => {
@@ -162,20 +215,32 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
                       />
                     </label>
 
-                    {/* 字段名称 */}
+                    {/* 字段名称：只读展示（超长自动滚动），点击才进入编辑 */}
                     <div className="map-name">
-                      <input
-                        className="input src-input"
-                        value={col.header}
-                        title={`来源列 ${col.letter}：${col.header}`}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          updateColumn(sheet.name, col.key, {
-                            header: v,
-                            targetFieldName: col.targetFieldId ? col.targetFieldName : v,
-                          })
-                        }}
-                      />
+                      {editingKey === col.key ? (
+                        <input
+                          className="input src-input"
+                          autoFocus
+                          value={col.header}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            updateColumn(sheet.name, col.key, {
+                              header: v,
+                              targetFieldName: col.targetFieldId ? col.targetFieldName : v,
+                            })
+                          }}
+                          onBlur={() => setEditingKey(null)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === 'Escape') setEditingKey(null)
+                          }}
+                        />
+                      ) : (
+                        <FieldName
+                          text={col.header}
+                          title={`来源列 ${col.letter}：${col.header}（点击可改名）`}
+                          onClick={() => setEditingKey(col.key)}
+                        />
+                      )}
                       {col.mediaCount > 0 && (
                         <span className="badge acc" title={`该列有 ${col.mediaCount} 个图片/附件`}>
                           <IconImage size={11} />

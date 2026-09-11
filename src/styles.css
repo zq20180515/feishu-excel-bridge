@@ -5,18 +5,20 @@
 
 :root {
   /* --- 中性色阶（Slate） --- */
-  --bg: #e7e9ed;
+  /* 页面底色刻意压得很浅：插件整块嵌在飞书侧栏里，底色一深整个面板就「发灰」，
+     白卡也会显得脏。设计稿里的 #E7E9ED 是它那个展示台的背景，不适合搬进面板内。 */
+  --bg: #f7f9fb;
   --surface: #ffffff;
-  --surface-2: #fcfcfd;
+  --surface-2: #fbfcfd;
   --surface-3: #f1f5f9;
 
-  --line: #e2e8f0;
-  --line-soft: #f1f5f9;
-  --line-strong: #cbd5e1;
+  --line: #e6ebf1;
+  --line-soft: #eef1f5;
+  --line-strong: #cfd8e3;
 
   --text: #0f172a;
   --text-2: #475569;
-  --text-3: #94a3b8;
+  --text-3: #8b98a9;
   --text-4: #cbd5e1;
 
   /* --- 品牌 teal（强调色，用于选中/图标/进度） --- */
@@ -82,7 +84,7 @@ body {
 }
 
 body {
-  background: var(--surface-2);
+  background: var(--bg);
   color: var(--text);
   font-family: var(--font);
   font-size: 13px;
@@ -211,7 +213,7 @@ body {
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow-1);
   overflow: hidden;
@@ -793,21 +795,25 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单 */
+/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
 .stage-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 14px;
+  gap: 1px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 16px auto 0;
+  text-align: left;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 4px;
+  padding: 8px 2px;
   font-size: 12.5px;
   color: var(--text-3);
+  white-space: nowrap;
 }
 
 .stage .sic {
@@ -839,6 +845,22 @@ body {
 .stage .sic svg {
   width: 16px;
   height: 16px;
+}
+
+/* 尚未开始的阶段：空心圈 */
+.stage .sic .hollow {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+}
+
+/* 进行中阶段的进度后缀，如（62 / 91） */
+.stage-num {
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .spin {
@@ -968,6 +990,27 @@ body {
   background: var(--accent-softer);
   color: var(--accent-ink);
   font-weight: 600;
+}
+
+/* 格式说明的入口：接在类型徽章末尾的一个 ? 图标，整段说明收进 tooltip */
+.ftype-info {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-3);
+  line-height: 1.6;
+  cursor: help;
+  white-space: nowrap;
+  transition: color 0.14s, border-color 0.14s, background 0.14s;
+}
+
+.ftype-info:hover {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-softer);
 }
 
 /* ------------------------------ 表单元素 ------------------------------ */
@@ -1410,25 +1453,82 @@ select.input {
   min-width: 0;
 }
 
-/* 字段名输入：默认无边框，hover/focus 才显形 —— 降低视觉噪音 */
-.map-name .src-input {
+/* ---------- 字段名：限制显示长度，超出部分自动来回滚动 ---------- */
+
+.fld-name {
+  display: block;
   flex: 1;
   min-width: 0;
-  font-weight: 500;
-  border-color: transparent;
-  background: transparent;
+  width: 100%;
   padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: left;
+  cursor: text;
+  overflow: hidden;
+  transition: border-color 0.14s, background 0.14s;
 }
 
-.map-name .src-input:hover {
+.fld-name:hover {
   border-color: var(--line);
   background: var(--surface);
 }
 
-.map-name .src-input:focus {
+.fld-name:focus-visible {
+  outline: none;
   border-color: var(--accent);
-  background: var(--surface);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.fld-name-inner {
+  display: inline-block;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* 只有真正溢出时才滚动（组件测出溢出后打上 .overflow） */
+.fld-name.overflow .fld-name-inner {
+  animation: fld-marquee 7.5s ease-in-out infinite alternate;
+}
+
+/* 鼠标移上去暂停滚动，方便看清完整名称 */
+.fld-name:hover .fld-name-inner {
+  animation-play-state: paused;
+}
+
+@keyframes fld-marquee {
+  0%,
+  16% {
+    transform: translateX(0);
+  }
+  84%,
+  100% {
+    transform: translateX(var(--fld-shift, 0px));
+  }
+}
+
+/* 编辑态：换成真正的 input */
+.map-name .src-input {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  padding: 4px 7px;
+}
+
+/* 整行取消勾选：变灰 + 字段名加删除线 */
+.map-row.off .fld-name-inner {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.map-row.off .tk {
+  filter: grayscale(0.7);
 }
 
 .map-type {
@@ -1985,70 +2085,86 @@ select.input {
 
 /* ------------------------------ 成功 / 完成态 ------------------------------ */
 
+/* ---------------------------- 沉浸式状态页 ---------------------------- */
+/* 运行中 / 已完成时不再显示配置界面，整页只留状态内容，不加卡片边框 */
+
+.done-page,
+.run-page {
+  padding-top: 2px;
+}
+
 .success-wrap {
-  padding: 32px 24px 18px;
+  padding: 30px 22px 4px;
   text-align: center;
 }
 
+/* 大对勾：浅绿圆底 + 外扩光晕，并把对勾描边加粗（细线在大尺寸下显得单薄） */
 .success-ring {
   display: grid;
   place-items: center;
-  width: 76px;
-  height: 76px;
-  margin: 0 auto 16px;
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 18px;
   border-radius: 50%;
   background: var(--accent-soft);
   color: var(--accent);
-  box-shadow: 0 0 0 8px var(--accent-softer), 0 10px 24px -8px rgba(15, 118, 110, 0.4);
+  box-shadow: 0 0 0 10px var(--accent-softer);
+}
+
+.success-ring svg {
+  stroke-width: 2.6;
 }
 
 .success-wrap h2 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 600;
+  font-size: 21px;
+  font-weight: 650;
   color: var(--text);
+  letter-spacing: 0.2px;
 }
 
 .success-wrap p {
-  margin: 6px 0 0;
+  margin: 7px 0 0;
   font-size: 12.5px;
   color: var(--text-2);
+  word-break: break-all;
 }
 
+/* 统计网格 */
 .stat-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 18px;
+  gap: 10px;
+  margin-top: 22px;
 }
 
 .stat {
-  background: var(--surface-2);
-  border: 1px solid var(--line-soft);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 14px 16px;
   text-align: left;
 }
 
 .stat .v {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.4px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .stat .k {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-3);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .done-actions {
   display: flex;
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 20px;
 }
 
 .done-actions .btn {
@@ -2056,10 +2172,11 @@ select.input {
 }
 
 .note-line {
-  margin-top: 12px;
+  margin-top: 14px;
   font-size: 11.5px;
   color: var(--text-3);
   text-align: center;
+  line-height: 1.6;
 }
 
 /* ------------------------------ 反馈弹层 ------------------------------ */

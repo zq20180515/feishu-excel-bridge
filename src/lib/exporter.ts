@@ -1,3 +1,4 @@
+import JSZip from 'jszip'
 import { FT, isImageMime } from './field-meta'
 import { fetchAllRecords, getAttachmentUrls, getTable, orderedFields } from './base-api'
 import { bitableValueToExcel, extractAttachments, guessExtFromMime } from './value-convert'
@@ -5,14 +6,37 @@ import { buildXlsxBlob } from './excel-write'
 import type { OutCellImage, OutImage, OutSheet } from './excel-write'
 import type { FieldBrief } from './types'
 
-export type ExportProgress = { phase: string; done: number; total: number; detail?: string }
+/** 导出的四个阶段，供 UI 渲染阶段清单 */
+export type ExportStage = 'read' | 'fetch' | 'media' | 'pack'
+
+export type ExportProgress = {
+  phase: string
+  done: number
+  total: number
+  detail?: string
+  /** 当前处于哪个阶段（用于打勾清单） */
+  stage?: ExportStage
+}
+
+/**
+ * 打包方式。
+ * - `single`：所有选中的数据表放进同一个 Excel（每表一个工作表）
+ * - `perTable`：每张数据表单独一个 Excel，整体打包成 zip 下载
+ */
+export type ExportPackMode = 'single' | 'perTable'
 
 export type ExportOptions = {
   tableIds: string[]
   /** dispimg = WPS 内嵌单元格；float = 浮动图片锚定到单元格 */
   imageMode: 'dispimg' | 'float'
-  /** 是否把附件里的图片嵌进单元格 */
+  /**
+   * 是否把附件里的图片嵌进单元格。
+   * UI 上已不再暴露开关（「图片嵌入方式」本身已表达该意图），保留参数是为了
+   * 保持导出器的可测性与将来可能的批量场景。
+   */
   embedImages: boolean
+  /** 打包方式：一个 Excel 还是拆成多个 */
+  packMode: ExportPackMode
   /**
    * 全部图片都导出。
    *
@@ -25,7 +49,7 @@ export type ExportOptions = {
   attachmentNameColumn: boolean
   /**
    * 图片显示边长（px）。不传或 0 = 原图原尺寸。
-   * 仅 float 模式生效；dispimg 模式的显示尺寸由 WPS 依据单元格/原图自行决定。
+   * 两种嵌图模式都生效：dispimg 写进 cellimages 的 a:ext，float 写进锚点尺寸。
    */
   imageSizePx?: number
   /** 超过该大小的附件不下载（MB） */
@@ -39,6 +63,8 @@ export type ExportResult = {
   summary: { table: string; records: number; images: number }[]
   warnings: string[]
   errors: string[]
+  /** 实际产出的文件数：single = 1，perTable = 数据表数量（打包成 zip） */
+  fileCount: number
 }
 
 type Column =
@@ -78,8 +104,8 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
   const errors: string[] = []
   const summary: ExportResult['summary'] = []
   const outSheets: OutSheet[] = []
-  const report = (phase: string, done: number, total: number, detail?: string) =>
-    opts.onProgress?.({ phase, done, total, detail })
+  const report = (stage: ExportStage, phase: string, done: number, total: number, detail?: string) =>
+    opts.onProgress?.({ stage, phase, done, total, detail })
 
   const tableIds = opts.tableIds.filter(Boolean)
   if (!tableIds.length) throw new Error('请至少选择一个数据表')
@@ -98,10 +124,11 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
     } catch {
       /* ignore */
     }
-    report(`导出 ${ti + 1}/${tableIds.length}`, 0, 1, `${tableName} · 读取字段`)
+    report('read', `读取 ${ti + 1}/${tableIds.length}`, ti, tableIds.length, tableName)
 
     const fields = await orderedFields(table)
     const records = await fetchAllRecords(table)
+    report('fetch', `读取 ${ti + 1}/${tableIds.length}`, 0, records.length, `${tableName} · 拉取字段与记录`)
 
     /**
      * 组装列。
@@ -136,7 +163,7 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
       }
     }
 
-    report(`导出 ${ti + 1}/${tableIds.length}`, 0, records.length, `${tableName} · 整理数据`)
+    report('fetch', `读取 ${ti + 1}/${tableIds.length}`, 0, records.length, `${tableName} · 整理数据`)
 
     // 先建 rows + 收集需要下载的附件
     const rows: (string | number | boolean | null)[][] = []
@@ -191,7 +218,8 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
       })
       rows.push(row)
 
-      if (ri % 50 === 0) report(`导出 ${ti + 1}/${tableIds.length}`, ri, records.length, `${tableName} · 整理数据 ${ri + 1}/${records.length}`)
+      if (ri % 50 === 0)
+        report('fetch', `读取 ${ti + 1}/${tableIds.length}`, ri, records.length, `${tableName} · 整理数据 ${ri + 1}/${records.length}`)
     }
 
     // 下载图片：先拿临时下载地址，再取二进制
@@ -207,7 +235,7 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
       }
       const groupList = [...groups.entries()]
 
-      report(`导出 ${ti + 1}/${tableIds.length}`, 0, imgTasks.length, `${tableName} · 下载附件`)
+      report('media', `下载附件`, 0, imgTasks.length, `${tableName} · 下载附件图片`)
 
       let done = 0
       await mapPool(groupList, 4, async ([, tasksInGroup]) => {
@@ -247,11 +275,12 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
             errors.push(`附件「${task.name}」下载失败：${String((e as Error)?.message ?? e)}`)
           } finally {
             done++
-            if (done % 5 === 0) report(`导出 ${ti + 1}/${tableIds.length}`, done, imgTasks.length, `${tableName} · 下载附件 ${done}/${imgTasks.length}`)
+            if (done % 5 === 0)
+              report('media', `下载附件`, done, imgTasks.length, `${tableName} · 第 ${done} / ${imgTasks.length} 张图片`)
           }
         })
       })
-      report(`导出 ${ti + 1}/${tableIds.length}`, imgTasks.length, imgTasks.length, `${tableName} · 附件处理完成`)
+      report('media', `下载附件`, imgTasks.length, imgTasks.length, `${tableName} · 附件处理完成`)
     }
 
     outSheets.push({
@@ -282,16 +311,56 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
     )
   }
 
-  report('生成 Excel', 0, 1, '写入文件')
-  const blob = await buildXlsxBlob(outSheets, {
-    imageMode: opts.imageMode,
-    // undefined / 0 都表示「原图原尺寸」
-    imageSizePx: opts.imageSizePx && opts.imageSizePx > 0 ? opts.imageSizePx : undefined,
-  })
+  /* ---------- 打包 ---------- */
+  const stamp = safeFileStamp()
+  let blob: Blob
+  let fileName: string
+  let fileCount: number
 
-  const fileName = `多维表格导出_${outSheets[0]?.name ?? 'data'}_${safeFileStamp()}.xlsx`.replace(/[\\/:*?"<>|]/g, '_')
+  // 只有一张表时，拆与不拆结果一样，直接走单文件分支
+  if (opts.packMode === 'perTable' && outSheets.length > 1) {
+    report('pack', '打包文件', 0, outSheets.length, `逐表生成 ${outSheets.length} 个 Excel`)
+    const zip = new JSZip()
+    const used = new Set<string>()
+    for (let i = 0; i < outSheets.length; i++) {
+      const sheet = outSheets[i]
+      report('pack', '打包文件', i, outSheets.length, `${sheet.name} · 写入文件`)
+      const one = await buildXlsxBlob([sheet], {
+        imageMode: opts.imageMode,
+        imageSizePx: opts.imageSizePx && opts.imageSizePx > 0 ? opts.imageSizePx : undefined,
+      })
+      zip.file(uniqueXlsxName(sheet.name, stamp, used), one)
+    }
+    blob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+    })
+    fileName = `多维表格导出_${outSheets.length}个工作表_${stamp}.zip`
+    fileCount = outSheets.length
+  } else {
+    report('pack', '生成 Excel', 0, 1, '嵌入图片并写入文件')
+    blob = await buildXlsxBlob(outSheets, {
+      imageMode: opts.imageMode,
+      imageSizePx: opts.imageSizePx && opts.imageSizePx > 0 ? opts.imageSizePx : undefined,
+    })
+    fileName = `多维表格导出_${outSheets[0]?.name ?? 'data'}_${stamp}.xlsx`
+    fileCount = 1
+  }
 
-  return { blob, fileName, summary, warnings, errors }
+  fileName = fileName.replace(/[\\/:*?"<>|]/g, '_')
+
+  return { blob, fileName, summary, warnings, errors, fileCount }
+}
+
+/** 工作表名 → 安全的 xlsx 文件名；同名时补序号，避免 zip 内互相覆盖 */
+function uniqueXlsxName(sheetName: string, stamp: string, used: Set<string>): string {
+  const base = (sheetName || '数据表').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) || '数据表'
+  let name = `${base}_${stamp}.xlsx`
+  let n = 2
+  while (used.has(name)) name = `${base}_${stamp}_${n++}.xlsx`
+  used.add(name)
+  return name
 }
 
 export function triggerDownload(blob: Blob, fileName: string): void {
@@ -336,9 +405,20 @@ export async function revealExportFile(blob: Blob, fileName: string): Promise<Re
   const w = window as FilePickerWindow
   if (typeof w.showSaveFilePicker === 'function') {
     try {
+      // 拆分模式下产物是 zip，保存对话框要给出对应的类型与扩展名
+      const isZip = /\.zip$/i.test(fileName)
       const handle = await w.showSaveFilePicker({
         suggestedName: fileName,
-        types: [{ description: 'Excel 工作簿', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }],
+        types: [
+          isZip
+            ? { description: 'ZIP 压缩包', accept: { 'application/zip': ['.zip'] } }
+            : {
+                description: 'Excel 工作簿',
+                accept: {
+                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                },
+              },
+        ],
       })
       const writable = await handle.createWritable()
       await writable.write(blob)

@@ -17,11 +17,16 @@ import type { FieldBrief, MediaRef, SourceColumn, SourceSheet } from './types'
 import { mimeOfName } from './field-meta'
 import { toBitableValue } from './value-convert'
 
+/** 导入的四个阶段，供 UI 渲染阶段清单 */
+export type ImportStage = 'parse' | 'media' | 'fields' | 'records'
+
 export type ImportProgress = {
   phase: string
   done: number
   total: number
   detail?: string
+  /** 当前处于哪个阶段（用于打勾清单） */
+  stage?: ImportStage
 }
 
 export type ImportSheetResult = {
@@ -38,11 +43,15 @@ export type ImportResult = {
   tables: ImportSheetResult[]
   warnings: string[]
   errors: { sheet: string; row: number; column: string; message: string }[]
+  /** 用户中途取消（已写入的数据表与记录不会回滚） */
+  cancelled?: boolean
 }
 
 export type ImportOptions = {
   skipEmptyRows: boolean
   uploadBatchSize: number
+  /** 返回 true 时在下一个检查点停止，已写入的内容保留 */
+  shouldStop?: () => boolean
   onProgress?: (p: ImportProgress) => void
 }
 
@@ -95,8 +104,22 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
   const warnings: string[] = []
   const errors: ImportResult['errors'] = []
   const results: ImportSheetResult[] = []
-  const report = (phase: string, done: number, total: number, detail?: string) =>
-    opts.onProgress?.({ phase, done, total, detail })
+  const report = (stage: ImportStage, phase: string, done: number, total: number, detail?: string) =>
+    opts.onProgress?.({ stage, phase, done, total, detail })
+
+  /** 用户在界面上点了「取消」 */
+  const stop = () => opts.shouldStop?.() === true
+  /**
+   * 中途停止时返回已经完成的部分。
+   * 已经建好的数据表 / 字段 / 记录**不会回滚** —— 多维表格没有事务，
+   * 与其假装撤销，不如如实告诉用户哪些已经落地了。
+   */
+  const cancelledResult = (): ImportResult => ({
+    tables: results,
+    warnings: [...warnings, '已取消导入，剩余内容未写入。已创建的数据表与已写入的记录会保留在表格中。'],
+    errors,
+    cancelled: true,
+  })
 
   /* ---------- 1. 收集并上传附件 ---------- */
   const tasks: { sheetIdx: number; row: number; col: number; file: File }[] = []
@@ -113,12 +136,13 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
   })
 
   const mediaBySheet = new Map<number, Map<string, MediaRef[]>>()
+  if (stop()) return cancelledResult()
   if (tasks.length) {
-    report('上传附件', 0, tasks.length)
+    report('media', '正在上传附件图片', 0, tasks.length, `共 ${tasks.length} 个图片/附件`)
     const { tokens, failures } = await uploadFilesSerial(
       tasks.map((t) => t.file),
       opts.uploadBatchSize,
-      (done, total) => report('上传附件', done, total),
+      (done, total) => report('media', '正在上传附件图片', done, total, `第 ${done} / ${total} 个`),
     )
     tasks.forEach((t, i) => {
       const token = tokens[i]
@@ -148,6 +172,7 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
   /* ---------- 2. 逐 sheet 写入 ---------- */
   const enabledSheets = sheets.filter((s) => s.columns.some((c) => c.enabled))
   for (let si = 0; si < sheets.length; si++) {
+    if (stop()) return cancelledResult()
     const sheet = sheets[si]
     const enabled = sheet.columns.filter((c) => c.enabled)
     if (!enabled.length) {
@@ -156,7 +181,7 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
     }
 
     const sheetLabel = `数据表 ${sheets.indexOf(sheet) + 1}/${sheets.length}：${sheet.name}`
-    report(sheetLabel, 0, 1, '准备数据表')
+    report('fields', '正在准备数据表', si, sheets.length, sheetLabel)
 
     let tableId = ''
     let tableName = sheet.importTableName || sheet.name
@@ -383,6 +408,7 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
     let skippedCells = 0
 
     for (let i = 0; i < rows.length; i++) {
+      if (i % 20 === 0 && stop()) return cancelledResult()
       const r = rows[i]
       const rowValues = sheet.matrix[r] ?? []
       const fields: Record<string, unknown> = {}
@@ -416,11 +442,12 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
         if (!resolved.length) continue
       }
       records.push({ fields })
-      if (i % 50 === 0) report(sheetLabel, i, rows.length, `组装记录 ${i + 1}/${rows.length}`)
+      if (i % 50 === 0)
+        report('records', '正在写入记录', i, rows.length, `${sheet.name} · 第 ${i + 1} / ${rows.length} 行`)
     }
 
     /* --- 写回 --- */
-    report(sheetLabel, 0, records.length, `写入 ${records.length} 条记录`)
+    report('records', '正在写入记录', 0, records.length, `${sheet.name} · 共 ${records.length} 条记录`)
     let written = 0
     try {
       written = await addRecords(table, records)
@@ -432,7 +459,7 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
         message: `写入记录失败：${String((e as Error)?.message ?? e)}`,
       })
     }
-    report(sheetLabel, records.length, records.length, '完成')
+    report('records', '正在写入记录', records.length, records.length, `${sheet.name} · 完成`)
 
     results.push({
       sheet: sheet.name,

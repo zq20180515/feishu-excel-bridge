@@ -18,6 +18,10 @@ type Props = {
 }
 
 type ImageMode = 'dispimg' | 'float'
+/** 打包方式：一个 Excel 还是按表拆成多个（zip） */
+type PackMode = 'single' | 'perTable'
+/** 面板状态：配置 → 运行中 → 已完成 */
+type Phase = 'config' | 'running' | 'done'
 
 const MODE_TIP: Record<ImageMode, string> = {
   dispimg:
@@ -26,16 +30,37 @@ const MODE_TIP: Record<ImageMode, string> = {
     '图片作为标准浮动图片锚定在单元格上：Excel / WPS / LibreOffice 都能正常显示，兼容性最好。图片会覆盖在单元格上方，删除整行时需要留意图片位置。',
 }
 
+const PACK_TIP: Record<PackMode, string> = {
+  single:
+    '所有选中的数据表写进同一个 Excel，每张数据表对应一个工作表（Sheet）。适合汇总归档。',
+  perTable:
+    '每张数据表单独生成一个 Excel 文件，整体打包成 zip 下载。适合按表分发；只有一张表时会直接给 xlsx。',
+}
+
+/** 阶段清单（与 exporter.ts 的 ExportStage 对应） */
+const EXPORT_STAGES = [
+  { key: 'read', label: '读取数据表' },
+  { key: 'fetch', label: '拉取字段与记录' },
+  { key: 'media', label: '下载附件图片' },
+  { key: 'pack', label: '嵌入图片并生成 Excel' },
+]
+
 export default function ExportPanel({ tables, reloadTables }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [embedImages, setEmbedImages] = useState(true)
+  /**
+   * 「是否把图片嵌入单元格」不再单独给开关 —— 下面的「图片嵌入方式」
+   * 本身已经表达了这件事，两个控件并列只会让人犹豫。
+   */
+  const embedImages = true
   const [imageMode, setImageMode] = useState<ImageMode>('dispimg')
+  const [packMode, setPackMode] = useState<PackMode>('single')
   const [allImages, setAllImages] = useState(true)
   const [attachmentNameColumn, setAttachmentNameColumn] = useState(true)
   /** '' = 原图原尺寸 */
   const [imageSize, setImageSize] = useState('')
   const [maxImageMb, setMaxImageMb] = useState(10)
   const [busy, setBusy] = useState(false)
+  const [phase, setPhase] = useState<Phase>('config')
   const [progress, setProgress] = useState<ExportProgress | null>(null)
   const [result, setResult] = useState<ExportResult | null>(null)
   const [error, setError] = useState('')
@@ -66,11 +91,13 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
     setError('')
     setResult(null)
     setRevealMsg(null)
+    setPhase('running')
     try {
       const res = await runExport({
         tableIds: [...selected],
         imageMode,
         embedImages,
+        packMode,
         allImages,
         attachmentNameColumn,
         // 0 / 空 → 原图原尺寸
@@ -80,8 +107,10 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
       })
       setResult(res)
       triggerDownload(res.blob, res.fileName)
+      setPhase('done')
     } catch (e) {
       setError(`导出失败：${String((e as Error)?.message ?? e)}`)
+      setPhase('config')
     } finally {
       setBusy(false)
       setProgress(null)
@@ -106,6 +135,95 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
     } finally {
       setLocating(false)
     }
+  }
+
+  /* ==================== 运行中：整页只留进度 ==================== */
+  if (phase === 'running') {
+    return (
+      <div className="run-page">
+        <RingProgress
+          tone="export"
+          indeterminate={!progress}
+          done={progress?.done ?? 0}
+          total={progress?.total ?? 0}
+          label={progress?.phase ?? '正在准备'}
+          detail={progress?.detail}
+          ringCaption="已导出"
+          stages={EXPORT_STAGES}
+          currentStage={progress?.stage}
+        />
+        <div className="footer-bar">
+          <span className="muted">导出进行中，大文件可能需要几分钟</span>
+        </div>
+      </div>
+    )
+  }
+
+  /* ==================== 已完成：整页只留结果 ==================== */
+  if (phase === 'done' && result) {
+    return (
+      <div className="done-page">
+        <CompletionCard
+          title="导出完成"
+          subtitle={result.fileName}
+          stats={[
+            { v: result.summary.length, k: '工作表' },
+            { v: totalImages, k: '嵌入图片' },
+            { v: sizeMb, k: 'MB 文件' },
+            { v: totalRecords, k: '行记录' },
+          ]}
+          actions={
+            <>
+              <button className="btn ghost" onClick={() => setPhase('config')}>
+                返回
+              </button>
+              <button className="btn primary" onClick={() => triggerDownload(result.blob, result.fileName)}>
+                <IconDownload size={14} />
+                再下载一次
+              </button>
+            </>
+          }
+          note={
+            result.fileCount > 1
+              ? `${result.fileCount} 个 Excel 已打包为 zip；图片以${
+                  imageMode === 'dispimg' ? ' WPS 嵌入' : '标准浮动'
+                }方式写入`
+              : imageMode === 'dispimg'
+                ? '图片以 WPS 嵌入方式写入，用 WPS 打开可见'
+                : '图片以标准浮动方式写入，Excel / WPS 都能显示'
+          }
+        >
+          <div className="result-list" style={{ marginTop: 16 }}>
+            {result.summary.map((s, i) => (
+              <div className="result-item" key={i}>
+                <span className="result-name" title={s.table}>
+                  {s.table}
+                </span>
+                <span className="muted">{s.records} 条记录</span>
+                <span className="badge acc">
+                  <IconImage size={11} />
+                  {s.images}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {result.warnings.map((w, i) => (
+            <Notice kind="warn" key={`w${i}`}>
+              {w}
+            </Notice>
+          ))}
+          {result.errors.length > 0 && <div className="log">{result.errors.slice(0, 50).join('\n')}</div>}
+          {revealMsg && <Notice kind={revealMsg.kind}>{revealMsg.text}</Notice>}
+
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
+            <button className="btn link" onClick={() => void doReveal()} disabled={locating}>
+              {locating ? '正在定位…' : '打开文件所在位置'}
+            </button>
+          </div>
+        </CompletionCard>
+      </div>
+    )
   }
 
   return (
@@ -154,26 +272,24 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
       </Card>
 
       <Card title="导出选项">
-        {/* 图片嵌入方式 */}
-        <div className="opt-row">
-          <label className="check">
-            <input type="checkbox" checked={embedImages} onChange={(e) => setEmbedImages(e.target.checked)} />
-            <span>
-              把附件里的图片嵌入单元格
-              <Tip text="开启后会把附件字段里的图片下载下来写进 Excel；关闭则只导出文件名文本。">
-                <span className="help-dot">
-                  <IconInfo size={12} />
-                </span>
-              </Tip>
-            </span>
-          </label>
+        {/* 导出方式：合并成一个 Excel，还是按数据表拆成多个 */}
+        <div className="opt-group">
+          <div className="opt-label">导出方式</div>
+          <Segmented<PackMode>
+            value={packMode}
+            ariaLabel="导出方式"
+            options={[
+              { value: 'single', label: '合并为一个 Excel', tip: PACK_TIP.single },
+              { value: 'perTable', label: '拆分多个 Excel', tip: PACK_TIP.perTable },
+            ]}
+            onChange={setPackMode}
+          />
         </div>
 
-        <div className={`opt-group${embedImages ? '' : ' disabled'}`}>
+        <div className="opt-group">
           <div className="opt-label">图片嵌入方式</div>
           <Segmented<ImageMode>
             value={imageMode}
-            disabled={!embedImages}
             ariaLabel="图片嵌入方式"
             options={[
               { value: 'dispimg', label: 'WPS嵌入单元格图片', icon: <IconImage size={14} />, tip: MODE_TIP.dispimg },
@@ -183,8 +299,8 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
           />
         </div>
 
-        {/* 图片尺寸 —— 与「全部图片都导出」同级，两种嵌图方式都可用 */}
-        <div className={`opt-row sub${embedImages ? '' : ' disabled'}`}>
+        {/* 图片尺寸 —— 两种嵌图方式都生效 */}
+        <div className="opt-row sub">
           <label className="check">
             <span>图片边长</span>
             <input
@@ -192,7 +308,6 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
               inputMode="numeric"
               placeholder="原图"
               value={imageSize}
-              disabled={!embedImages}
               onChange={(e) => setImageSize(e.target.value.replace(/\D/g, '').slice(0, 4))}
             />
             <span className="muted">px</span>
@@ -208,12 +323,11 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
         </div>
 
         {/* 多图处理 */}
-        <div className={`opt-row sub${embedImages ? '' : ' disabled'}`}>
+        <div className="opt-row sub">
           <label className="check">
             <input
               type="checkbox"
               checked={allImages}
-              disabled={!embedImages}
               onChange={(e) => setAllImages(e.target.checked)}
             />
             <span>
@@ -265,118 +379,45 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
           </label>
         </div>
 
-        {!embedImages && <Notice kind="warn">未开启图片嵌入，附件字段只会导出文件名文本。</Notice>}
-        {embedImages && imageMode === 'dispimg' && (
+        {imageMode === 'dispimg' && (
           <Notice>
             DISPIMG 是 <b>WPS 的专有扩展</b>：用 WPS 打开可以看到图片在单元格里；用原生 Excel 打开时该单元格显示为
             <code>=DISPIMG(...)</code> 公式，图片仍保留在文件中。需要在 Excel 里也能看到图片，请改用「标准浮动图片」。
           </Notice>
         )}
-        {embedImages && (
-          <Notice>
-            {allImages
-              ? '已开启「全部图片都导出」：附件字段里的每张图会各占一列（照片、照片2、照片3…），第 11 张起不再展开。'
-              : '单个单元格只嵌第一张图，其余附件名见「附件名」列。需要把多余的图片也铺开，请勾选上面的「全部图片都导出」。'}
-          </Notice>
-        )}
-        {embedImages && selected.size > 1 && (
+        <Notice>
+          {allImages
+            ? '「全部图片都导出」已开启：附件字段里的每张图会各占一列（照片、照片2、照片3…），第 11 张起不再展开。'
+            : '单个单元格只嵌第一张图，其余附件名见「附件名」列。需要把多余的图片也铺开，请勾选上面的「全部图片都导出」。'}
+        </Notice>
+        {selected.size > 1 && (
           <Notice kind="warn">
-            多表导出时图片统一放在同一个 xlsx 内，每个工作表各自展开自己的图片列。
+            {packMode === 'single'
+              ? '多表导出时图片统一放在同一个 xlsx 内，每个工作表各自展开自己的图片列。'
+              : `将按数据表拆成 ${selected.size} 个 Excel 文件，整体打包成 zip 下载。`}
           </Notice>
         )}
       </Card>
 
-      {(progress || busy) && (
-        <Card title="导出进度" hint={progress?.phase ? undefined : '正在准备导出…'}>
-          <RingProgress
-            tone="export"
-            indeterminate={!progress}
-            done={progress?.done ?? 0}
-            total={progress?.total ?? 0}
-            label={progress?.phase ?? '准备中'}
-            detail={progress?.detail}
-          />
-        </Card>
-      )}
-
       {error && <Notice kind="err">{error}</Notice>}
 
-      {result && (
-        <Card>
-          <CompletionCard
-            title="导出完成"
-            subtitle={result.fileName}
-            stats={[
-              { v: result.summary.length, k: '工作表' },
-              { v: totalImages, k: '嵌入图片' },
-              { v: totalRecords, k: '行记录' },
-              { v: sizeMb, k: 'MB 文件' },
-            ]}
-            actions={
-              <>
-                <button className="btn ghost" onClick={() => triggerDownload(result.blob, result.fileName)}>
-                  <IconDownload size={14} />
-                  再下载一次
-                </button>
-                <button className="btn primary" onClick={() => void doReveal()} disabled={locating}>
-                  <IconFolder size={14} />
-                  {locating ? '正在定位…' : '打开文件位置'}
-                </button>
-              </>
-            }
-            note={
-              embedImages
-                ? imageMode === 'dispimg'
-                  ? '图片以 WPS 嵌入方式写入，用 WPS 打开可见'
-                  : '图片以标准浮动方式写入，Excel / WPS 都能显示'
-                : '未嵌入图片，仅导出文件名文本'
-            }
-          >
-            <div className="result-list" style={{ marginTop: 14 }}>
-              {result.summary.map((s, i) => (
-                <div className="result-item" key={i}>
-                  <span className="result-name" title={s.table}>
-                    {s.table}
-                  </span>
-                  <span className="muted">{s.records} 条记录</span>
-                  <span className="badge acc">
-                    <IconImage size={11} />
-                    {s.images}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {result.warnings.map((w, i) => (
-              <Notice kind="warn" key={`w${i}`}>
-                {w}
-              </Notice>
-            ))}
-            {result.errors.length > 0 && <div className="log">{result.errors.slice(0, 50).join('\n')}</div>}
-            {revealMsg && <Notice kind={revealMsg.kind}>{revealMsg.text}</Notice>}
-          </CompletionCard>
-        </Card>
-      )}
-
-      {!result && (
-        <div className="footer-bar">
-          <span className="muted">
-            已选 {selected.size} 张数据表
-            {embedImages
-              ? ` · ${imageMode === 'dispimg' ? 'WPS 嵌入单元格图片' : '标准浮动图片'}${allImages ? ' · 全部图片分列' : ''}`
-              : ' · 不嵌入图片'}
-          </span>
-          <button
-            className="btn primary"
-            style={{ marginLeft: 'auto' }}
-            disabled={busy || selected.size === 0}
-            onClick={() => void doExport()}
-          >
-            <IconDownload size={14} />
-            {busy ? '导出中…' : '导出并下载'}
-          </button>
-        </div>
-      )}
+      <div className="footer-bar">
+        <span className="muted">
+          已选 {selected.size} 张
+          {` · ${imageMode === 'dispimg' ? 'WPS 嵌入' : '标准浮动'}`}
+          {` · ${packMode === 'single' ? '合并' : '拆分'}`}
+          {allImages ? ' · 全部图片分列' : ''}
+        </span>
+        <button
+          className="btn primary"
+          style={{ marginLeft: 'auto' }}
+          disabled={busy || selected.size === 0}
+          onClick={() => void doExport()}
+        >
+          <IconDownload size={14} />
+          导出并下载
+        </button>
+      </div>
     </>
   )
 }

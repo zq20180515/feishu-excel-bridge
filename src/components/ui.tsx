@@ -106,10 +106,13 @@ export function Progress({
 
 /* ---------------------------- 环形进度（重设计） ---------------------------- */
 
+export type ProgressStageDef = { key: string; label: string }
+
 /**
  * 环形进度卡：用于导入/导出的主进度展示。
  * - `spinning` 时环形走不确定态（缺口绕圈），百分比显示为 —。
- * - 与条形 `Progress` 互补：环形给主流程，条形给紧凑/次级场景。
+ * - 传 `stages` + `currentStage` 会在下方渲染打勾清单：
+ *   当前阶段之前的打勾、当前阶段转圈、之后的空心圈。
  */
 export function RingProgress({
   done,
@@ -118,6 +121,9 @@ export function RingProgress({
   detail,
   tone = 'import',
   indeterminate,
+  ringCaption,
+  stages,
+  currentStage,
 }: {
   done: number
   total: number
@@ -125,6 +131,12 @@ export function RingProgress({
   detail?: ReactNode
   tone?: 'import' | 'export'
   indeterminate?: boolean
+  /** 环内百分比下方的小字，默认「已完成」 */
+  ringCaption?: string
+  /** 阶段清单定义（可选） */
+  stages?: ProgressStageDef[]
+  /** 当前进行到的阶段 key */
+  currentStage?: string
 }) {
   const safeTotal = Math.max(1, total)
   const pct = Math.max(0, Math.min(100, Math.round((done / safeTotal) * 100)))
@@ -133,6 +145,9 @@ export function RingProgress({
   const R = 42
   const CIRC = 2 * Math.PI * R
   const offset = spinning ? CIRC * 0.72 : CIRC * (1 - pct / 100)
+
+  const activeIdx =
+    stages && currentStage ? stages.findIndex((s) => s.key === currentStage) : -1
 
   return (
     <div className={`progress-card prog-${tone}${spinning ? ' spinning' : ''}`}>
@@ -166,11 +181,39 @@ export function RingProgress({
               </>
             )}
           </div>
-          <div className="ring-lbl">{spinning ? '进行中' : '已完成'}</div>
+          <div className="ring-lbl">{ringCaption ?? (spinning ? '进行中' : '已完成')}</div>
         </div>
       </div>
+
       <div className="phase">{label ?? '处理中'}</div>
       {detail && <div className="phase-sub">{detail}</div>}
+
+      {stages && stages.length > 0 && (
+        <div className="stage-list">
+          {stages.map((s, i) => {
+            const state = activeIdx < 0 ? '' : i < activeIdx ? 'done' : i === activeIdx ? 'active' : ''
+            return (
+              <div className={state ? `stage ${state}` : 'stage'} key={s.key}>
+                <span className="sic">
+                  {state === 'done' ? (
+                    <IconCheck size={16} />
+                  ) : state === 'active' ? (
+                    <span className="spin" />
+                  ) : (
+                    <span className="hollow" />
+                  )}
+                </span>
+                <span>{s.label}</span>
+                {state === 'active' && total > 1 && (
+                  <span className="stage-num">
+                    （{done} / {total}）
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

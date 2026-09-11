@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import MappingEditor from './MappingEditor'
 import { Card, CompletionCard, Notice, RingProgress, Steps, Tip } from './ui'
 import { IconImage, IconInfo, IconRetry, IconSheetImage, IconTable, IconUpload } from './icons'
@@ -13,6 +13,11 @@ type Props = {
   tables: TableBrief[]
   reloadTables: () => Promise<void>
 }
+
+const STEP_LABELS = ['选文件', '字段映射', '导入']
+
+/** 面板状态：配置 → 运行中 → 已完成 */
+type Phase = 'config' | 'running' | 'done'
 
 /**
  * 空白工作表：既没有可识别的列（表头全空），也没有数据行。
@@ -41,13 +46,21 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
   const [uploadBatchSize, setUploadBatchSize] = useState(10)
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
+  /** 仅表示「正在解析文件」，不触发状态页切换 */
+  const [parsing, setParsing] = useState(false)
+  const [phase, setPhase] = useState<Phase>('config')
   const [progress, setProgress] = useState<ImportProgress | null>(null)
   const [logs, setLogs] = useState<string[]>([])
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState('')
+  /** 非致命提示（例如用户取消） */
+  const [warn, setWarn] = useState('')
   const [showOptions, setShowOptions] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const lastFile = useRef<File | null>(null)
+  /** 置 true 后导入器在下一个检查点退出（已写入的部分不回滚） */
+  const stopRef = useRef(false)
 
   const pushLog = (s: string) => setLogs((p) => [...p.slice(-300), s])
 
@@ -58,10 +71,11 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
   const handleFile = async (file: File, headerOverride?: number) => {
     lastFile.current = file
     setError('')
+    setWarn('')
     setResult(null)
     setLogs([])
-    setBusy(true)
-    setProgress({ phase: '解析文件', done: 0, total: 1, detail: file.name })
+    setPhase('config')
+    setParsing(true)
     try {
       const res = await parseWorkbookFile(file, { headerRow: headerOverride ?? headerRow })
       setParsed(res)
@@ -74,8 +88,7 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
     } catch (e) {
       setError(`解析失败：${String((e as Error)?.message ?? e)}`)
     } finally {
-      setBusy(false)
-      setProgress(null)
+      setParsing(false)
     }
   }
 
@@ -94,28 +107,42 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
 
   const doImport = async () => {
     if (!parsed) return
+    stopRef.current = false
+    setCancelling(false)
     setBusy(true)
     setError('')
+    setWarn('')
     setLogs([])
     setResult(null)
+    setPhase('running')
     try {
       const res = await runImport(liveSheets, {
         skipEmptyRows,
         uploadBatchSize,
+        shouldStop: () => stopRef.current,
         onProgress: (p) => {
           setProgress(p)
           if (p.detail && (p.done === 0 || p.done === p.total)) pushLog(`${p.phase} · ${p.detail}`)
         },
       })
       setResult(res)
-      pushLog('导入完成')
       await reloadTables()
+      if (res.cancelled) {
+        pushLog('已取消导入')
+        setWarn('已取消导入 —— 剩余内容未写入。已经创建的数据表与写入的记录会保留在表格中。')
+        setPhase('config')
+      } else {
+        pushLog('导入完成')
+        setPhase('done')
+      }
     } catch (e) {
       setError(`导入失败：${String((e as Error)?.message ?? e)}`)
       pushLog(`! 导入失败：${String((e as Error)?.message ?? e)}`)
+      setPhase('config')
     } finally {
       setBusy(false)
       setProgress(null)
+      setCancelling(false)
     }
   }
 
@@ -130,24 +157,144 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
   const liveTableCount = liveSheets.filter((s) => s.columns.some((c) => c.enabled)).length
 
   /**
-   * 步骤条：选文件 → 字段映射 → 导入。
-   * 传入 items.length（=3）表示「三步全部完成」，此时不会再有 cur 高亮。
+   * 运行页的阶段清单。
+   * 顺序与 importer 的实际执行顺序一致 —— 附件上传发生在建表之前，
+   * 因为记录里的附件字段要写上传后拿到的 token。
+   * 没有附件时不插入该阶段，免得出现一条永远不动的空转项。
    */
-  const stepIndex = result ? 3 : parsed ? (busy ? 2 : 1) : 0
+  const runStages = useMemo(() => {
+    const list = [{ key: 'parse', label: '解析工作表与表头' }]
+    if (totalMedia > 0) list.push({ key: 'media', label: '上传附件图片' })
+    list.push({ key: 'fields', label: '创建数据表与字段' }, { key: 'records', label: '写入记录' })
+    return list
+  }, [totalMedia])
 
-  /** 回到空态，方便连续导入多份文件 */
+  /** 回到配置态，方便连续导入多份文件 */
   const resetImport = () => {
     setParsed(null)
     setResult(null)
     setError('')
     setLogs([])
     setProgress(null)
+    setPhase('config')
     lastFile.current = null
   }
 
+  /* ==================== 运行中：整页只留进度 ==================== */
+  if (phase === 'running') {
+    return (
+      <div className="run-page">
+        <Steps items={STEP_LABELS} current={2} />
+        <RingProgress
+          tone="import"
+          done={progress?.done ?? 0}
+          total={progress?.total ?? 0}
+          label={progress?.phase ?? '正在准备'}
+          detail={progress?.detail}
+          ringCaption="已写入"
+          stages={runStages}
+          currentStage={progress?.stage}
+        />
+        <div className="footer-bar">
+          <span className="muted">导入进行中，请勿关闭此面板</span>
+          <button
+            className="btn ghost"
+            style={{ marginLeft: 'auto' }}
+            disabled={cancelling}
+            onClick={() => {
+              stopRef.current = true
+              setCancelling(true)
+            }}
+          >
+            {cancelling ? '正在停止…' : '取消'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  /* ==================== 已完成：整页只留结果 ==================== */
+  if (phase === 'done' && result) {
+    return (
+      <div className="done-page">
+        <CompletionCard
+          title="导入完成"
+          subtitle={
+            result.tables.length > 0
+              ? `「${result.tables[0].tableName}」${
+                  result.tables.length > 1 ? ` 等 ${result.tables.length} 张表` : ''
+                } 已写入当前多维表格`
+              : '没有写入任何数据表，请检查下方提示'
+          }
+          stats={[
+            { v: liveTableCount, k: '数据表' },
+            { v: enabledCols, k: '字段' },
+            { v: totalRows, k: '行记录' },
+            { v: totalMedia, k: '附件图片' },
+          ]}
+          actions={
+            <>
+              <button className="btn ghost" onClick={() => setPhase('config')}>
+                返回
+              </button>
+              <button className="btn primary" onClick={resetImport}>
+                <IconRetry size={14} />
+                再导入一个
+              </button>
+            </>
+          }
+          note="同名数据表已自动加序号，可在左侧数据表列表查看"
+        >
+          {result.tables.length > 0 && (
+            <div className="result-list" style={{ marginTop: 16 }}>
+              {result.tables.map((t, i) => (
+                <div className="result-item" key={i}>
+                  <span className="result-name" title={`${t.sheet} → ${t.tableName}`}>
+                    {t.tableName}
+                  </span>
+                  <span className="muted">新建 {t.createdFields} 字段</span>
+                  <span className="muted">复用 {t.reusedFields}</span>
+                  <span className="badge ok">{t.records} 条</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {result.warnings.map((w, i) => (
+            <Notice kind="warn" key={`w${i}`}>
+              {w}
+            </Notice>
+          ))}
+
+          {result.errors.length > 0 && (
+            <>
+              <div className="log-title">跳过的内容（{result.errors.length} 条，最多显示 100 条）</div>
+              <div className="log">
+                {result.errors
+                  .slice(0, 100)
+                  .map((e) => `${e.sheet}${e.row > 0 ? ` 第${e.row}行` : ''} · ${e.column} → ${e.message}`)
+                  .join('\n')}
+              </div>
+            </>
+          )}
+
+          {logs.length > 0 && (
+            <>
+              <div className="log-title" style={{ color: 'var(--text-3)' }}>
+                执行日志
+              </div>
+              <div className="log">{logs.join('\n')}</div>
+            </>
+          )}
+        </CompletionCard>
+      </div>
+    )
+  }
+
+  /* ==================== 配置态 ==================== */
   return (
     <>
-      <Steps items={['选文件', '字段映射', '导入']} current={stepIndex} />
+      <Steps items={STEP_LABELS} current={parsed ? 1 : 0} />
 
       <Card flush>
         {/* 未选文件时：hero 空态（给侧栏一个明确的「从这里开始」） */}
@@ -196,22 +343,29 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
             </span>
           </div>
 
-          {/* 支持的文件类型一览 —— 只在还没选文件时展示，给映射区留空间 */}
+          {/* 支持的文件类型一览 —— 说明收进末尾的 ? 图标，鼠标移上去才展开 */}
           {!parsed && (
-            <>
-              <div className="row wrap" style={{ marginTop: 10, gap: 6 }}>
-                {IMPORTABLE_FILE_TYPES.map((t) => (
-                  <Tip key={t.ext} text={`${t.label}（.${t.ext}）— ${t.note}`}>
-                    <span className={`ftype${t.zip ? ' rich' : ''}`}>.{t.ext}</span>
-                  </Tip>
-                ))}
-              </div>
-              <Notice>
-                常用格式都能直接拖入。<b>.xlsx / .xlsm / .xltx / .xltm / .xlam</b> 是 zip 容器，图片能被解析成附件字段；
-                其余格式（<b>.xls / .xlsb / .ods / .csv / .txt</b>）只能读取单元格文本，图片列会是空的 ——
-                需要图片请先用 WPS / Excel 另存为 .xlsx。
-              </Notice>
-            </>
+            <div className="row wrap" style={{ marginTop: 10, gap: 6 }}>
+              {IMPORTABLE_FILE_TYPES.map((t) => (
+                <Tip key={t.ext} text={`${t.label}（.${t.ext}）— ${t.note}`}>
+                  <span className={`ftype${t.zip ? ' rich' : ''}`}>.{t.ext}</span>
+                </Tip>
+              ))}
+              <Tip
+                text={
+                  <>
+                    <b>.xlsx / .xlsm / .xltx / .xltm / .xlam</b> 是 zip 容器，里面的图片能被解析成「附件」字段。
+                    <br />
+                    其余格式（<b>.xls / .xlsb / .ods / .csv / .txt</b>）只能读取单元格文本，
+                    图片列会是空的 —— 需要图片请先用 WPS / Excel 另存为 .xlsx。
+                  </>
+                }
+              >
+                <span className="ftype-info" aria-label="支持的文件类型说明">
+                  <IconInfo size={12} />
+                </span>
+              </Tip>
+            </div>
           )}
 
           <div className="row wrap" style={{ marginTop: 12 }}>
@@ -266,6 +420,7 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
       </Card>
 
       {error && <Notice kind="err">{error}</Notice>}
+      {warn && <Notice kind="warn">{warn}</Notice>}
 
       {parsed && parsed.sheets.length > 0 && (
         <>
@@ -312,81 +467,7 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
         </>
       )}
 
-      {(progress || logs.length > 0) && (
-        <Card title="执行进度">
-          {progress && (
-            <RingProgress
-              tone="import"
-              done={progress.done}
-              total={progress.total}
-              label={progress.phase}
-              detail={progress.detail}
-            />
-          )}
-          {logs.length > 0 && <div className="log" style={{ marginTop: 10 }}>{logs.join('\n')}</div>}
-        </Card>
-      )}
-
-      {result && (
-        <Card>
-          <CompletionCard
-            title="导入完成"
-            subtitle={
-              result.tables.length > 0
-                ? `${result.tables.length} 张数据表已写入当前多维表格`
-                : '没有写入任何数据表，请检查下方提示'
-            }
-            stats={[
-              { v: liveTableCount, k: '数据表' },
-              { v: enabledCols, k: '字段' },
-              { v: totalRows, k: '行记录' },
-              { v: totalMedia, k: '附件图片' },
-            ]}
-            actions={
-              <button className="btn primary" onClick={resetImport}>
-                <IconRetry size={14} />
-                再导入一个
-              </button>
-            }
-            note="同名数据表已自动加序号，可在左侧数据表列表查看"
-          >
-            {result.tables.length > 0 && (
-              <div className="result-list" style={{ marginTop: 14 }}>
-                {result.tables.map((t, i) => (
-                  <div className="result-item" key={i}>
-                    <span className="result-name" title={`${t.sheet} → ${t.tableName}`}>
-                      {t.tableName}
-                    </span>
-                    <span className="muted">新建 {t.createdFields} 字段</span>
-                    <span className="muted">复用 {t.reusedFields}</span>
-                    <span className="badge ok">{t.records} 条</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {result.warnings.map((w, i) => (
-              <Notice kind="warn" key={`w${i}`}>
-                {w}
-              </Notice>
-            ))}
-
-            {result.errors.length > 0 && (
-              <>
-                <div className="log-title">跳过的内容（{result.errors.length} 条，最多显示 100 条）</div>
-                <div className="log">
-                  {result.errors
-                    .slice(0, 100)
-                    .map((e) => `${e.sheet}${e.row > 0 ? ` 第${e.row}行` : ''} · ${e.column} → ${e.message}`)
-                    .join('\n')}
-                </div>
-              </>
-            )}
-          </CompletionCard>
-        </Card>
-      )}
-
-      {parsed && liveSheets.length > 0 && !result && (
+      {parsed && liveSheets.length > 0 && (
         <div className="footer-bar">
           <span className="muted">
             将导入 {liveTableCount} 张数据表 · {enabledCols} 个字段 · {totalRows} 行数据

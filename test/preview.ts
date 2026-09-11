@@ -128,17 +128,12 @@ function body(...children: ReturnType<typeof createElement>[]) {
 
 const views: string[] = []
 
-// ① 导入空态
+// ① 导入空态（ImportPanel 自带步骤条，这里不要再叠一个）
 views.push(
   frame(
     '① 导入 · 空态',
-    '步骤条 + hero 空态 + 拖放区 + 文件类型徽章',
-    panelShell(
-      body(
-        createElement(Steps, { items: ['选文件', '字段映射', '导入'], current: 0 }),
-        createElement(ImportPanel, { tables: [], reloadTables: noop }),
-      ),
-    ),
+    '步骤条 + hero 空态 + 拖放区 + 文件类型徽章（说明收进 ? 图标）',
+    panelShell(body(createElement(ImportPanel, { tables: [], reloadTables: noop }))),
   ),
 )
 
@@ -152,7 +147,7 @@ views.push(
         createElement(Steps, { items: ['选文件', '字段映射', '导入'], current: 1 }),
         createElement(
           Card,
-          { title: '字段映射', hint: '每个工作表单独成表；取消勾选 = 不导入该字段；类型可改' },
+          { title: '字段映射' },
           createElement(MappingEditor, {
             sheets,
             tables,
@@ -170,25 +165,24 @@ views.push(
 views.push(
   frame(
     '③ 导入 · 进行中',
-    '环形进度 + 阶段清单 + 底部栏',
+    '环形进度 + 阶段清单（完成打勾 / 进行中转圈 / 未开始空心圈）',
     panelShell(
       body(
         createElement(Steps, { items: ['选文件', '字段映射', '导入'], current: 2 }),
-        createElement(
-          Card,
-          { title: '执行进度' },
-          createElement(RingProgress, {
-            done: 62,
-            total: 91,
-            label: '正在写入记录',
-            detail: '第 62 / 91 行 · 字段映射自动套用',
-          }),
-          createElement(
-            'div',
-            { className: 'log', style: { marginTop: 10 } },
-            '已解析「员工档案.xlsx」：1 个工作表\n  · 员工档案：91 行数据，6 列，识别到 26 个图片/附件\n正在创建字段…\n正在写入记录 62/91',
-          ),
-        ),
+        createElement(RingProgress, {
+          done: 62,
+          total: 91,
+          label: '正在写入记录',
+          detail: '员工档案 · 第 62 / 91 行',
+          ringCaption: '已写入',
+          stages: [
+            { key: 'parse', label: '解析工作表与表头' },
+            { key: 'media', label: '上传附件图片' },
+            { key: 'fields', label: '创建数据表与字段' },
+            { key: 'records', label: '写入记录' },
+          ],
+          currentStage: 'records',
+        }),
       ),
     ),
   ),
@@ -198,13 +192,12 @@ views.push(
 views.push(
   frame(
     '④ 导入 · 完成',
-    '大对勾 + 4 格统计 + 明细 + 主按钮',
+    '大对勾 + 4 格统计 + 明细 + 双按钮（整页状态，无卡片边框）',
     panelShell(
       body(
-        createElement(Steps, { items: ['选文件', '字段映射', '导入'], current: 3 }),
         createElement(
-          Card,
-          null,
+          'div',
+          { className: 'done-page' },
           createElement(
             CompletionCard,
             {
@@ -254,20 +247,24 @@ views.push(
 views.push(
   frame(
     '⑥ 导出 · 进行中',
-    '环形进度（导出配色为蓝）+ 阶段明细',
+    '环形进度（导出配色为蓝）+ 四个阶段',
     panelShell(
       body(
-        createElement(
-          Card,
-          { title: '导出进度' },
-          createElement(RingProgress, {
-            tone: 'export',
-            done: 12,
-            total: 26,
-            label: '正在下载附件图片',
-            detail: '办公用品申请表 · 第 12 / 26 张图片',
-          }),
-        ),
+        createElement(RingProgress, {
+          tone: 'export',
+          done: 12,
+          total: 26,
+          label: '正在下载附件图片',
+          detail: '办公用品申请表 · 第 12 / 26 张图片',
+          ringCaption: '已导出',
+          stages: [
+            { key: 'read', label: '读取数据表' },
+            { key: 'fetch', label: '拉取字段与记录' },
+            { key: 'media', label: '下载附件图片' },
+            { key: 'pack', label: '嵌入图片并生成 Excel' },
+          ],
+          currentStage: 'media',
+        }),
       ),
     ),
   ),
@@ -281,8 +278,8 @@ views.push(
     panelShell(
       body(
         createElement(
-          Card,
-          null,
+          'div',
+          { className: 'done-page' },
           createElement(
             CompletionCard,
             {
