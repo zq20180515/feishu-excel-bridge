@@ -1,5 +1,15 @@
 import { useRef, useState } from 'react'
-import { Card, CompletionCard, Notice, RingProgress, Segmented, Tip, formatBytes } from './ui'
+import {
+  Card,
+  CompletionCard,
+  Notice,
+  RingProgress,
+  Segmented,
+  Tip,
+  formatBytes,
+  formatDuration,
+  useSinceUpdate,
+} from './ui'
 import type { ProgressStageDef } from './ui'
 import {
   IconDownload,
@@ -77,6 +87,8 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
   const [retrying, setRetrying] = useState<string[]>([])
   /** onMediaReady 挂起期间保存的 resolve；用户点按钮后放行 */
   const resolveRef = useRef<((v: 'continue' | 'abort') => void) | null>(null)
+  /** 距上次进度更新过了多久（导出时同样会有一段界面不动的等待期） */
+  const waiting = useSinceUpdate(progress)
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -220,7 +232,11 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
           currentStage={progress?.stage}
         />
         <div className="footer-bar">
-          <span className="muted">导出进行中，大文件可能需要几分钟</span>
+          <span className={waiting >= 60 ? 'muted wait-slow' : 'muted'}>
+            导出中{progress?.total ? ` · 已处理 ${progress.done} / ${progress.total}` : ''}
+            {waiting >= 8 ? ` · 当前步骤 ${formatDuration(waiting)}` : ''}
+            {waiting >= 60 ? '（仍在处理）' : ''}
+          </span>
         </div>
       </div>
     )

@@ -2085,6 +2085,11 @@ select.input {
   flex: none;
 }
 
+/* 等待时间变长时把文字转成警示色，避免用户以为卡死 */
+.footer-bar .wait-slow {
+  color: var(--warn);
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,

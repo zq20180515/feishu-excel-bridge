@@ -119,10 +119,15 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, idx: numbe
 
 /**
  * 单个附件下载的超时（毫秒）。
- * 与上传同理：一个挂起的请求不能把整次导出拖死。
- * 给的额度比上传更宽松 —— 图片可能是几 MB 的原图，慢网络下需要更久。
+ *
+ * ⚠️ 这个值刻意压得比较小。实测数据里最大的图只有 868 KB、最慢 0.6 秒 ——
+ * 正常单张下载是**亚秒级**。某个请求一旦远超这个量级，它通常是卡在连接上
+ * 而不是在传数据，久等毫无意义，反而会把并发槽位占住、拖慢整批。
+ * 失败后会立刻进「待确认」页，点一下就能重试，所以宁可早点放弃。
  */
-const IMAGE_FETCH_TIMEOUT_MS = 120_000
+const IMAGE_FETCH_TIMEOUT_MS = 45_000
+/** 取下载地址（SDK 调用）的超时，同样不能久等 */
+const GET_URL_TIMEOUT_MS = 30_000
 
 /** 人类可读的体积 */
 function fmtSize(bytes: number): string {
@@ -343,7 +348,16 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
       report('media', '下载附件图片', 0, imgTasks.length, `${tableName}`, imgItems)
 
       let done = 0
-      await mapPool(groupList, 4, async ([, tasksInGroup]) => {
+      /*
+       * 并发度刻意保守：3 个单元格组 × 每组 2 张 = 最多 6 个并发请求。
+       *
+       * 之前是 4 × 3 = 12，配上 120 秒的单张超时，一旦有连接卡住，
+       * 并发槽会被占满两分钟，整批就像「死住不动」——
+       * 这正是「下载时突然卡在某张一百多 K 的图上一动不动」的来源。
+       * 图片本身很小（实测最大 868 KB / 0.6 秒），并发开大并不能更快，
+       * 反而更容易触发服务端限流。
+       */
+      await mapPool(groupList, 3, async ([, tasksInGroup]) => {
         const first = tasksInGroup[0]
         let urls: string[] = []
         try {
@@ -354,14 +368,14 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
               first.fieldId,
               first.recordId,
             ),
-            60_000,
+            GET_URL_TIMEOUT_MS,
             '获取附件下载地址',
           )
         } catch {
           urls = []
         }
 
-        await mapPool(tasksInGroup, 3, async (task, k) => {
+        await mapPool(tasksInGroup, 2, async (task, k) => {
           const item = imgItems[task.idx]
           const url = urls[k]
 
@@ -460,7 +474,7 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
         try {
           const urls = await withTimeout(
             getAttachmentUrls(task.table as never, [task.token], task.fieldId, task.recordId),
-            60_000,
+            GET_URL_TIMEOUT_MS,
             '获取附件下载地址',
           )
           const url = urls?.[0]

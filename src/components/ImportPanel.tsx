@@ -9,6 +9,7 @@ import {
   Tip,
   formatBytes,
   formatDuration,
+  useSinceUpdate,
 } from './ui'
 import type { ProgressStageDef } from './ui'
 import { IconImage, IconInfo, IconRetry, IconSheetImage, IconTable, IconUpload } from './icons'
@@ -77,6 +78,8 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
    * 有秒表用户才能确认「它在动」而不是卡死了。
    */
   const [elapsed, setElapsed] = useState(0)
+  /** 距上次进度更新过了多久 —— 一批几十个文件要跑一二十秒，期间界面是不动的 */
+  const waiting = useSinceUpdate(progress)
 
   useEffect(() => {
     if (phase !== 'running') return
@@ -257,7 +260,11 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
           currentStage={progress?.stage}
         />
         <div className="footer-bar">
-          <span className="muted">导入中 · 已用时 {formatDuration(elapsed)}</span>
+          <span className={waiting >= 60 ? 'muted wait-slow' : 'muted'}>
+            导入中 · 已用时 {formatDuration(elapsed)}
+            {waiting >= 8 ? ` · 当前步骤 ${formatDuration(waiting)}` : ''}
+            {waiting >= 60 ? '（仍在处理）' : ''}
+          </span>
           <span className="footer-actions">
             <button
               className="btn ghost xs"
@@ -490,11 +497,13 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
                 <Tip
                   text={
                     <>
-                      多维表格的上传接口 <b>禁止并发调用</b>，这里会按批次串行上传。
+                      这是<b>一次请求带几个文件</b>，不是「线程数」——
+                      上传接口禁止并发调用，所有批次都是排队的。
                       <br />
-                      批次越大，往返次数越少、总耗时越短；但单批一旦失败要走逐个兜底，代价也更高。
+                      批次越大往返越少，但界面刷新越稀疏（30 个一批大约 20 秒不动）；
+                      批次小则进度更平滑。建议 <b>5–10</b>。
                       <br />
-                      附件很多（几百个）时建议调到 <b>20–30</b>。
+                      单批失败会降级为逐个重传，批次太大时这个代价也更高。
                     </>
                   }
                 >

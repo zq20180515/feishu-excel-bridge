@@ -40,6 +40,32 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
+/**
+ * 距「上一次进度更新」过去了多少秒，每秒刷新。
+ *
+ * 批量上传/下载时，一批几十个文件要跑一二十秒，界面在这期间**完全不动** ——
+ * 用户的感受就是「卡死了」。把这个秒数显示出来，就能区分
+ * 「在等一批处理完」和「真的没反应」。
+ */
+export function useSinceUpdate(dep: unknown): number {
+  const [sec, setSec] = useState(0)
+  const lastRef = useRef(Date.now())
+
+  useEffect(() => {
+    lastRef.current = Date.now()
+    setSec(0)
+  }, [dep])
+
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setSec(Math.floor((Date.now() - lastRef.current) / 1000))
+    }, 1000)
+    return () => window.clearInterval(t)
+  }, [])
+
+  return sec
+}
+
 /* ------------------------------- 卡片 ------------------------------- */
 
 export function Card({
