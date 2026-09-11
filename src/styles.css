@@ -497,206 +497,6 @@ body {
   font-weight: 600;
 }
 
-/* -------------------------------- 进度 -------------------------------- */
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-/* --------------------------- 醒目进度块（prog） --------------------------- */
-
-.prog {
-  --prog-tone: var(--accent);
-  --prog-tone-soft: var(--accent-soft);
-  padding: 12px 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.prog-export {
-  --prog-tone: #2563eb;
-  --prog-tone-soft: var(--blue-soft);
-}
-
-.prog-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.prog-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.prog-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prog-tone);
-  box-shadow: 0 0 0 0 var(--prog-tone);
-  animation: prog-pulse 1.4s ease-out infinite;
-  flex: none;
-}
-
-.prog:not(.spinning) .prog-label::before {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--prog-tone-soft);
-}
-
-@keyframes prog-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(15, 118, 110, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
-  }
-}
-
-.prog-export .prog-label::before {
-  animation-name: prog-pulse-export;
-}
-
-@keyframes prog-pulse-export {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.prog-pct {
-  color: var(--prog-tone);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.prog .progress {
-  height: 9px;
-  border-radius: 999px;
-  background: var(--surface-3);
-}
-
-.prog .progress-fill {
-  position: relative;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--prog-tone), color-mix(in srgb, var(--prog-tone) 72%, #ffffff));
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow: hidden;
-}
-
-/* 流动光泽：让进度条「活着」 */
-.progress-gloss {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 80%
-  );
-  background-size: 220% 100%;
-  animation: prog-gloss 1.25s linear infinite;
-}
-
-.prog:not(.spinning) .progress-gloss {
-  animation-duration: 2.4s;
-}
-
-@keyframes prog-gloss {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-/* 不确定总量：整条走流光 */
-.prog.spinning .progress-fill {
-  background: linear-gradient(
-    100deg,
-    var(--prog-tone) 0%,
-    color-mix(in srgb, var(--prog-tone) 55%, #ffffff) 50%,
-    var(--prog-tone) 100%
-  );
-  background-size: 220% 100%;
-  animation: prog-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes prog-sweep {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-.prog-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-.prog-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.prog-num {
-  color: var(--prog-tone);
-  font-weight: 700;
-  font-size: 12.5px;
-}
-
-.prog-sep {
-  color: var(--text-4);
-}
-
-.prog-detail {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* --------------------------- 环形进度（重设计） --------------------------- */
 
 .ring-wrap {
@@ -1303,7 +1103,10 @@ select.input {
 .tip-bubble {
   position: fixed;
   z-index: 9999;
-  max-width: 260px;
+  /* width: max-content 是必须的：fixed 元素是 shrink-to-fit，不写宽度时
+     可用宽度会被 left 位置挤压，靠近右边缘就会变成「一两个字一行」。 */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 8px 11px;
   border-radius: var(--radius-xs);
   background: #0f172a;
@@ -1433,6 +1236,11 @@ select.input {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.opt-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .opt-group.disabled {
   opacity: 0.5;
   pointer-events: none;
@@ -1444,6 +1252,37 @@ select.input {
   font-weight: 500;
   color: var(--text);
   letter-spacing: 0.1px;
+}
+
+/* 组下方的说明小字（替代原来占地方的提示条） */
+.opt-note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行式选项：左标签 / 右控件 / 右侧小字说明 */
+.opt-name {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.opt-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.opt-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 .opt-panel {

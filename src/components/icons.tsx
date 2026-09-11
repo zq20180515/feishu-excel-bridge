@@ -56,15 +56,6 @@ export function IconImage({ size = 16, className }: P) {
   )
 }
 
-export function IconGrid({ size = 16, className }: P) {
-  return (
-    <svg {...base(size, className)}>
-      <rect x="3" y="4.5" width="18" height="15" rx="2" />
-      <path d="M3 9.5h18M3 14.5h18M9 4.5v15" />
-    </svg>
-  )
-}
-
 export function IconCheck({ size = 16, className }: P) {
   return (
     <svg {...base(size, className)}>
@@ -105,22 +96,6 @@ export function IconRefresh({ size = 16, className }: P) {
     <svg {...base(size, className)}>
       <path d="M20 11.5A8 8 0 1 0 18.4 16" />
       <path d="M20 5.5v6h-5.6" />
-    </svg>
-  )
-}
-
-export function IconSparkle({ size = 16, className }: P) {
-  return (
-    <svg {...base(size, className)}>
-      <path d="M12 3.5 13.7 9l5.5 1.7-5.5 1.7L12 18l-1.7-5.6L4.8 10.7 10.3 9Z" />
-    </svg>
-  )
-}
-
-export function IconChevron({ size = 16, className }: P) {
-  return (
-    <svg {...base(size, className)}>
-      <path d="m6 9.5 6 6 6-6" />
     </svg>
   )
 }

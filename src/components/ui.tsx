@@ -113,61 +113,6 @@ export function Notice({ kind = 'info', children }: { kind?: NoticeKind; childre
   )
 }
 
-/* ------------------------------- 进度条 ------------------------------- */
-
-/**
- * 进度条。
- * - 只在 `done/total` 有值时按比例推进；`indeterminate` 时走流光（不确定总量）。
- * - `tone='export'` 换一套配色，让导出进度和导入明显区分。
- */
-export function Progress({
-  done,
-  total,
-  label,
-  detail,
-  tone = 'import',
-  indeterminate,
-}: {
-  done: number
-  total: number
-  label?: ReactNode
-  detail?: ReactNode
-  tone?: 'import' | 'export'
-  indeterminate?: boolean
-}) {
-  const safeTotal = Math.max(1, total)
-  const pct = Math.max(0, Math.min(100, Math.round((done / safeTotal) * 100)))
-  const spinning = indeterminate || pct === 0
-  return (
-    <div className={`prog prog-${tone}${spinning ? ' spinning' : ''}`}>
-      <div className="prog-top">
-        <span className="prog-label">{label ?? '处理中'}</span>
-        <span className="prog-pct">{Math.round(pct)}%</span>
-      </div>
-      <div
-        className="progress"
-        role="progressbar"
-        aria-valuenow={pct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuetext={`${pct}%`}
-      >
-        <div className="progress-fill" style={{ width: `${Math.max(pct, 3)}%` }}>
-          <span className="progress-gloss" aria-hidden />
-        </div>
-      </div>
-      <div className="prog-foot">
-        <span className="prog-count">
-          <span className="prog-num">{done}</span>
-          <span className="prog-sep">/</span>
-          <span>{total || '—'}</span>
-        </span>
-        {detail && <span className="prog-detail">{detail}</span>}
-      </div>
-    </div>
-  )
-}
-
 /* ---------------------------- 环形进度（重设计） ---------------------------- */
 
 /* 明细条目的类型定义在 lib/types.ts（导入/导出都要用），这里转出去方便组件侧引用 */
@@ -580,10 +525,21 @@ export function Tip({
     const el = anchorRef.current
     if (!el) return
     const r = el.getBoundingClientRect()
-    const x = r.left + r.width / 2
+    /*
+     * 视口收边。
+     *
+     * 气泡是 fixed 定位的 shrink-to-fit 元素，可用宽度 = 视口宽 - left。
+     * 锚点靠近右边缘时可用宽度会被压得很小，文字就变成一两个字一行、
+     * 看着像「排版错乱」。这里按气泡宽度上限把它夹进视口内。
+     */
+    const MAX_W = 280
+    const half = MAX_W / 2
+    const vw = window.innerWidth || document.documentElement.clientWidth || MAX_W + 16
+    const center = r.left + r.width / 2
+    const x = Math.min(Math.max(Number.isFinite(center) ? center : vw / 2, half + 8), vw - half - 8)
     const y = side === 'top' ? r.top : r.bottom
     setPos({
-      x: Number.isFinite(x) ? x : (window.innerWidth || 0) / 2,
+      x: Number.isFinite(x) ? x : vw / 2,
       y: Number.isFinite(y) ? y : 0,
     })
   }, [side])

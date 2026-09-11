@@ -558,206 +558,6 @@ body {
   font-weight: 600;
 }
 
-/* -------------------------------- 进度 -------------------------------- */
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-/* --------------------------- 醒目进度块（prog） --------------------------- */
-
-.prog {
-  --prog-tone: var(--accent);
-  --prog-tone-soft: var(--accent-soft);
-  padding: 12px 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.prog-export {
-  --prog-tone: #2563eb;
-  --prog-tone-soft: var(--blue-soft);
-}
-
-.prog-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.prog-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.prog-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prog-tone);
-  box-shadow: 0 0 0 0 var(--prog-tone);
-  animation: prog-pulse 1.4s ease-out infinite;
-  flex: none;
-}
-
-.prog:not(.spinning) .prog-label::before {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--prog-tone-soft);
-}
-
-@keyframes prog-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(15, 118, 110, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
-  }
-}
-
-.prog-export .prog-label::before {
-  animation-name: prog-pulse-export;
-}
-
-@keyframes prog-pulse-export {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.prog-pct {
-  color: var(--prog-tone);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.prog .progress {
-  height: 9px;
-  border-radius: 999px;
-  background: var(--surface-3);
-}
-
-.prog .progress-fill {
-  position: relative;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--prog-tone), color-mix(in srgb, var(--prog-tone) 72%, #ffffff));
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow: hidden;
-}
-
-/* 流动光泽：让进度条「活着」 */
-.progress-gloss {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 80%
-  );
-  background-size: 220% 100%;
-  animation: prog-gloss 1.25s linear infinite;
-}
-
-.prog:not(.spinning) .progress-gloss {
-  animation-duration: 2.4s;
-}
-
-@keyframes prog-gloss {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-/* 不确定总量：整条走流光 */
-.prog.spinning .progress-fill {
-  background: linear-gradient(
-    100deg,
-    var(--prog-tone) 0%,
-    color-mix(in srgb, var(--prog-tone) 55%, #ffffff) 50%,
-    var(--prog-tone) 100%
-  );
-  background-size: 220% 100%;
-  animation: prog-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes prog-sweep {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-.prog-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-.prog-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.prog-num {
-  color: var(--prog-tone);
-  font-weight: 700;
-  font-size: 12.5px;
-}
-
-.prog-sep {
-  color: var(--text-4);
-}
-
-.prog-detail {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* --------------------------- 环形进度（重设计） --------------------------- */
 
 .ring-wrap {
@@ -1364,7 +1164,10 @@ select.input {
 .tip-bubble {
   position: fixed;
   z-index: 9999;
-  max-width: 260px;
+  /* width: max-content 是必须的：fixed 元素是 shrink-to-fit，不写宽度时
+     可用宽度会被 left 位置挤压，靠近右边缘就会变成「一两个字一行」。 */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 8px 11px;
   border-radius: var(--radius-xs);
   background: #0f172a;
@@ -1494,6 +1297,11 @@ select.input {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.opt-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .opt-group.disabled {
   opacity: 0.5;
   pointer-events: none;
@@ -1505,6 +1313,37 @@ select.input {
   font-weight: 500;
   color: var(--text);
   letter-spacing: 0.1px;
+}
+
+/* 组下方的说明小字（替代原来占地方的提示条） */
+.opt-note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行式选项：左标签 / 右控件 / 右侧小字说明 */
+.opt-name {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.opt-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.opt-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 .opt-panel {
@@ -2146,6 +1985,11 @@ select.input {
   flex: none;
 }
 
+/* 等待时间变长时把文字转成警示色，避免用户以为卡死 */
+.footer-bar .wait-slow {
+  color: var(--warn);
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -2369,6 +2213,108 @@ select.input {
   color: var(--text-3);
   text-align: center;
   line-height: 1.6;
+}
+
+/* ------------------------- 导出失败待确认（review） ------------------------- */
+
+.review-wrap {
+  padding: 26px 20px 6px;
+  text-align: center;
+}
+
+.review-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: 0 0 0 9px #fef9ec;
+}
+
+.review-wrap h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.review-wrap p {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* 失败清单：固定高度 + 滚动，条目多也不会把侧栏撑长 */
+.review-list {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-sub {
+  font-size: 11px;
+  color: var(--err);
+}
+
+.review-retry {
+  flex: none;
+  padding: 5px 7px;
+}
+
+/* 只放图标的小圆按钮（表单里的次级动作） */
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only svg {
+  transition: transform 0.3s;
+}
+
+/* 重试进行中：图标持续转（复用 .spin 的 keyframes，但不动尺寸/边框） */
+.icon-only.rotating svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.review-retry:hover:not(:disabled) .icon-only svg {
+  transform: rotate(90deg);
 }
 
 /* ------------------------------ 反馈弹层 ------------------------------ */
@@ -3045,206 +2991,6 @@ body {
   font-weight: 600;
 }
 
-/* -------------------------------- 进度 -------------------------------- */
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-/* --------------------------- 醒目进度块（prog） --------------------------- */
-
-.prog {
-  --prog-tone: var(--accent);
-  --prog-tone-soft: var(--accent-soft);
-  padding: 12px 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.prog-export {
-  --prog-tone: #2563eb;
-  --prog-tone-soft: var(--blue-soft);
-}
-
-.prog-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.prog-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.prog-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prog-tone);
-  box-shadow: 0 0 0 0 var(--prog-tone);
-  animation: prog-pulse 1.4s ease-out infinite;
-  flex: none;
-}
-
-.prog:not(.spinning) .prog-label::before {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--prog-tone-soft);
-}
-
-@keyframes prog-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(15, 118, 110, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
-  }
-}
-
-.prog-export .prog-label::before {
-  animation-name: prog-pulse-export;
-}
-
-@keyframes prog-pulse-export {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.prog-pct {
-  color: var(--prog-tone);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.prog .progress {
-  height: 9px;
-  border-radius: 999px;
-  background: var(--surface-3);
-}
-
-.prog .progress-fill {
-  position: relative;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--prog-tone), color-mix(in srgb, var(--prog-tone) 72%, #ffffff));
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow: hidden;
-}
-
-/* 流动光泽：让进度条「活着」 */
-.progress-gloss {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 80%
-  );
-  background-size: 220% 100%;
-  animation: prog-gloss 1.25s linear infinite;
-}
-
-.prog:not(.spinning) .progress-gloss {
-  animation-duration: 2.4s;
-}
-
-@keyframes prog-gloss {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-/* 不确定总量：整条走流光 */
-.prog.spinning .progress-fill {
-  background: linear-gradient(
-    100deg,
-    var(--prog-tone) 0%,
-    color-mix(in srgb, var(--prog-tone) 55%, #ffffff) 50%,
-    var(--prog-tone) 100%
-  );
-  background-size: 220% 100%;
-  animation: prog-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes prog-sweep {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-.prog-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-.prog-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.prog-num {
-  color: var(--prog-tone);
-  font-weight: 700;
-  font-size: 12.5px;
-}
-
-.prog-sep {
-  color: var(--text-4);
-}
-
-.prog-detail {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* --------------------------- 环形进度（重设计） --------------------------- */
 
 .ring-wrap {
@@ -3851,7 +3597,10 @@ select.input {
 .tip-bubble {
   position: fixed;
   z-index: 9999;
-  max-width: 260px;
+  /* width: max-content 是必须的：fixed 元素是 shrink-to-fit，不写宽度时
+     可用宽度会被 left 位置挤压，靠近右边缘就会变成「一两个字一行」。 */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 8px 11px;
   border-radius: var(--radius-xs);
   background: #0f172a;
@@ -3981,6 +3730,11 @@ select.input {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.opt-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .opt-group.disabled {
   opacity: 0.5;
   pointer-events: none;
@@ -3992,6 +3746,37 @@ select.input {
   font-weight: 500;
   color: var(--text);
   letter-spacing: 0.1px;
+}
+
+/* 组下方的说明小字（替代原来占地方的提示条） */
+.opt-note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行式选项：左标签 / 右控件 / 右侧小字说明 */
+.opt-name {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.opt-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.opt-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 .opt-panel {
@@ -4633,6 +4418,11 @@ select.input {
   flex: none;
 }
 
+/* 等待时间变长时把文字转成警示色，避免用户以为卡死 */
+.footer-bar .wait-slow {
+  color: var(--warn);
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -4856,6 +4646,108 @@ select.input {
   color: var(--text-3);
   text-align: center;
   line-height: 1.6;
+}
+
+/* ------------------------- 导出失败待确认（review） ------------------------- */
+
+.review-wrap {
+  padding: 26px 20px 6px;
+  text-align: center;
+}
+
+.review-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: 0 0 0 9px #fef9ec;
+}
+
+.review-wrap h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.review-wrap p {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* 失败清单：固定高度 + 滚动，条目多也不会把侧栏撑长 */
+.review-list {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-sub {
+  font-size: 11px;
+  color: var(--err);
+}
+
+.review-retry {
+  flex: none;
+  padding: 5px 7px;
+}
+
+/* 只放图标的小圆按钮（表单里的次级动作） */
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only svg {
+  transition: transform 0.3s;
+}
+
+/* 重试进行中：图标持续转（复用 .spin 的 keyframes，但不动尺寸/边框） */
+.icon-only.rotating svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.review-retry:hover:not(:disabled) .icon-only svg {
+  transform: rotate(90deg);
 }
 
 /* ------------------------------ 反馈弹层 ------------------------------ */
@@ -5532,206 +5424,6 @@ body {
   font-weight: 600;
 }
 
-/* -------------------------------- 进度 -------------------------------- */
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-/* --------------------------- 醒目进度块（prog） --------------------------- */
-
-.prog {
-  --prog-tone: var(--accent);
-  --prog-tone-soft: var(--accent-soft);
-  padding: 12px 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.prog-export {
-  --prog-tone: #2563eb;
-  --prog-tone-soft: var(--blue-soft);
-}
-
-.prog-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.prog-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.prog-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prog-tone);
-  box-shadow: 0 0 0 0 var(--prog-tone);
-  animation: prog-pulse 1.4s ease-out infinite;
-  flex: none;
-}
-
-.prog:not(.spinning) .prog-label::before {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--prog-tone-soft);
-}
-
-@keyframes prog-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(15, 118, 110, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
-  }
-}
-
-.prog-export .prog-label::before {
-  animation-name: prog-pulse-export;
-}
-
-@keyframes prog-pulse-export {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.prog-pct {
-  color: var(--prog-tone);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.prog .progress {
-  height: 9px;
-  border-radius: 999px;
-  background: var(--surface-3);
-}
-
-.prog .progress-fill {
-  position: relative;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--prog-tone), color-mix(in srgb, var(--prog-tone) 72%, #ffffff));
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow: hidden;
-}
-
-/* 流动光泽：让进度条「活着」 */
-.progress-gloss {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 80%
-  );
-  background-size: 220% 100%;
-  animation: prog-gloss 1.25s linear infinite;
-}
-
-.prog:not(.spinning) .progress-gloss {
-  animation-duration: 2.4s;
-}
-
-@keyframes prog-gloss {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-/* 不确定总量：整条走流光 */
-.prog.spinning .progress-fill {
-  background: linear-gradient(
-    100deg,
-    var(--prog-tone) 0%,
-    color-mix(in srgb, var(--prog-tone) 55%, #ffffff) 50%,
-    var(--prog-tone) 100%
-  );
-  background-size: 220% 100%;
-  animation: prog-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes prog-sweep {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-.prog-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-.prog-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.prog-num {
-  color: var(--prog-tone);
-  font-weight: 700;
-  font-size: 12.5px;
-}
-
-.prog-sep {
-  color: var(--text-4);
-}
-
-.prog-detail {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* --------------------------- 环形进度（重设计） --------------------------- */
 
 .ring-wrap {
@@ -6338,7 +6030,10 @@ select.input {
 .tip-bubble {
   position: fixed;
   z-index: 9999;
-  max-width: 260px;
+  /* width: max-content 是必须的：fixed 元素是 shrink-to-fit，不写宽度时
+     可用宽度会被 left 位置挤压，靠近右边缘就会变成「一两个字一行」。 */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 8px 11px;
   border-radius: var(--radius-xs);
   background: #0f172a;
@@ -6468,6 +6163,11 @@ select.input {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.opt-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .opt-group.disabled {
   opacity: 0.5;
   pointer-events: none;
@@ -6479,6 +6179,37 @@ select.input {
   font-weight: 500;
   color: var(--text);
   letter-spacing: 0.1px;
+}
+
+/* 组下方的说明小字（替代原来占地方的提示条） */
+.opt-note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行式选项：左标签 / 右控件 / 右侧小字说明 */
+.opt-name {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.opt-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.opt-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 .opt-panel {
@@ -7120,6 +6851,11 @@ select.input {
   flex: none;
 }
 
+/* 等待时间变长时把文字转成警示色，避免用户以为卡死 */
+.footer-bar .wait-slow {
+  color: var(--warn);
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -7343,6 +7079,108 @@ select.input {
   color: var(--text-3);
   text-align: center;
   line-height: 1.6;
+}
+
+/* ------------------------- 导出失败待确认（review） ------------------------- */
+
+.review-wrap {
+  padding: 26px 20px 6px;
+  text-align: center;
+}
+
+.review-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: 0 0 0 9px #fef9ec;
+}
+
+.review-wrap h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.review-wrap p {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* 失败清单：固定高度 + 滚动，条目多也不会把侧栏撑长 */
+.review-list {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-sub {
+  font-size: 11px;
+  color: var(--err);
+}
+
+.review-retry {
+  flex: none;
+  padding: 5px 7px;
+}
+
+/* 只放图标的小圆按钮（表单里的次级动作） */
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only svg {
+  transition: transform 0.3s;
+}
+
+/* 重试进行中：图标持续转（复用 .spin 的 keyframes，但不动尺寸/边框） */
+.icon-only.rotating svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.review-retry:hover:not(:disabled) .icon-only svg {
+  transform: rotate(90deg);
 }
 
 /* ------------------------------ 反馈弹层 ------------------------------ */
@@ -8019,206 +7857,6 @@ body {
   font-weight: 600;
 }
 
-/* -------------------------------- 进度 -------------------------------- */
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-/* --------------------------- 醒目进度块（prog） --------------------------- */
-
-.prog {
-  --prog-tone: var(--accent);
-  --prog-tone-soft: var(--accent-soft);
-  padding: 12px 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.prog-export {
-  --prog-tone: #2563eb;
-  --prog-tone-soft: var(--blue-soft);
-}
-
-.prog-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.prog-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.prog-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prog-tone);
-  box-shadow: 0 0 0 0 var(--prog-tone);
-  animation: prog-pulse 1.4s ease-out infinite;
-  flex: none;
-}
-
-.prog:not(.spinning) .prog-label::before {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--prog-tone-soft);
-}
-
-@keyframes prog-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(15, 118, 110, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
-  }
-}
-
-.prog-export .prog-label::before {
-  animation-name: prog-pulse-export;
-}
-
-@keyframes prog-pulse-export {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.prog-pct {
-  color: var(--prog-tone);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.prog .progress {
-  height: 9px;
-  border-radius: 999px;
-  background: var(--surface-3);
-}
-
-.prog .progress-fill {
-  position: relative;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--prog-tone), color-mix(in srgb, var(--prog-tone) 72%, #ffffff));
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow: hidden;
-}
-
-/* 流动光泽：让进度条「活着」 */
-.progress-gloss {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 80%
-  );
-  background-size: 220% 100%;
-  animation: prog-gloss 1.25s linear infinite;
-}
-
-.prog:not(.spinning) .progress-gloss {
-  animation-duration: 2.4s;
-}
-
-@keyframes prog-gloss {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-/* 不确定总量：整条走流光 */
-.prog.spinning .progress-fill {
-  background: linear-gradient(
-    100deg,
-    var(--prog-tone) 0%,
-    color-mix(in srgb, var(--prog-tone) 55%, #ffffff) 50%,
-    var(--prog-tone) 100%
-  );
-  background-size: 220% 100%;
-  animation: prog-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes prog-sweep {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-.prog-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-.prog-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.prog-num {
-  color: var(--prog-tone);
-  font-weight: 700;
-  font-size: 12.5px;
-}
-
-.prog-sep {
-  color: var(--text-4);
-}
-
-.prog-detail {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* --------------------------- 环形进度（重设计） --------------------------- */
 
 .ring-wrap {
@@ -8825,7 +8463,10 @@ select.input {
 .tip-bubble {
   position: fixed;
   z-index: 9999;
-  max-width: 260px;
+  /* width: max-content 是必须的：fixed 元素是 shrink-to-fit，不写宽度时
+     可用宽度会被 left 位置挤压，靠近右边缘就会变成「一两个字一行」。 */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 8px 11px;
   border-radius: var(--radius-xs);
   background: #0f172a;
@@ -8955,6 +8596,11 @@ select.input {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.opt-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .opt-group.disabled {
   opacity: 0.5;
   pointer-events: none;
@@ -8966,6 +8612,37 @@ select.input {
   font-weight: 500;
   color: var(--text);
   letter-spacing: 0.1px;
+}
+
+/* 组下方的说明小字（替代原来占地方的提示条） */
+.opt-note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行式选项：左标签 / 右控件 / 右侧小字说明 */
+.opt-name {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.opt-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.opt-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 .opt-panel {
@@ -9607,6 +9284,11 @@ select.input {
   flex: none;
 }
 
+/* 等待时间变长时把文字转成警示色，避免用户以为卡死 */
+.footer-bar .wait-slow {
+  color: var(--warn);
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -9830,6 +9512,108 @@ select.input {
   color: var(--text-3);
   text-align: center;
   line-height: 1.6;
+}
+
+/* ------------------------- 导出失败待确认（review） ------------------------- */
+
+.review-wrap {
+  padding: 26px 20px 6px;
+  text-align: center;
+}
+
+.review-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: 0 0 0 9px #fef9ec;
+}
+
+.review-wrap h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.review-wrap p {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* 失败清单：固定高度 + 滚动，条目多也不会把侧栏撑长 */
+.review-list {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-sub {
+  font-size: 11px;
+  color: var(--err);
+}
+
+.review-retry {
+  flex: none;
+  padding: 5px 7px;
+}
+
+/* 只放图标的小圆按钮（表单里的次级动作） */
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only svg {
+  transition: transform 0.3s;
+}
+
+/* 重试进行中：图标持续转（复用 .spin 的 keyframes，但不动尺寸/边框） */
+.icon-only.rotating svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.review-retry:hover:not(:disabled) .icon-only svg {
+  transform: rotate(90deg);
 }
 
 /* ------------------------------ 反馈弹层 ------------------------------ */
@@ -10506,206 +10290,6 @@ body {
   font-weight: 600;
 }
 
-/* -------------------------------- 进度 -------------------------------- */
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-/* --------------------------- 醒目进度块（prog） --------------------------- */
-
-.prog {
-  --prog-tone: var(--accent);
-  --prog-tone-soft: var(--accent-soft);
-  padding: 12px 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.prog-export {
-  --prog-tone: #2563eb;
-  --prog-tone-soft: var(--blue-soft);
-}
-
-.prog-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.prog-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.prog-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prog-tone);
-  box-shadow: 0 0 0 0 var(--prog-tone);
-  animation: prog-pulse 1.4s ease-out infinite;
-  flex: none;
-}
-
-.prog:not(.spinning) .prog-label::before {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--prog-tone-soft);
-}
-
-@keyframes prog-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(15, 118, 110, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
-  }
-}
-
-.prog-export .prog-label::before {
-  animation-name: prog-pulse-export;
-}
-
-@keyframes prog-pulse-export {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.prog-pct {
-  color: var(--prog-tone);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.prog .progress {
-  height: 9px;
-  border-radius: 999px;
-  background: var(--surface-3);
-}
-
-.prog .progress-fill {
-  position: relative;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--prog-tone), color-mix(in srgb, var(--prog-tone) 72%, #ffffff));
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow: hidden;
-}
-
-/* 流动光泽：让进度条「活着」 */
-.progress-gloss {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 80%
-  );
-  background-size: 220% 100%;
-  animation: prog-gloss 1.25s linear infinite;
-}
-
-.prog:not(.spinning) .progress-gloss {
-  animation-duration: 2.4s;
-}
-
-@keyframes prog-gloss {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-/* 不确定总量：整条走流光 */
-.prog.spinning .progress-fill {
-  background: linear-gradient(
-    100deg,
-    var(--prog-tone) 0%,
-    color-mix(in srgb, var(--prog-tone) 55%, #ffffff) 50%,
-    var(--prog-tone) 100%
-  );
-  background-size: 220% 100%;
-  animation: prog-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes prog-sweep {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-.prog-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-.prog-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.prog-num {
-  color: var(--prog-tone);
-  font-weight: 700;
-  font-size: 12.5px;
-}
-
-.prog-sep {
-  color: var(--text-4);
-}
-
-.prog-detail {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* --------------------------- 环形进度（重设计） --------------------------- */
 
 .ring-wrap {
@@ -11312,7 +10896,10 @@ select.input {
 .tip-bubble {
   position: fixed;
   z-index: 9999;
-  max-width: 260px;
+  /* width: max-content 是必须的：fixed 元素是 shrink-to-fit，不写宽度时
+     可用宽度会被 left 位置挤压，靠近右边缘就会变成「一两个字一行」。 */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 8px 11px;
   border-radius: var(--radius-xs);
   background: #0f172a;
@@ -11442,6 +11029,11 @@ select.input {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.opt-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .opt-group.disabled {
   opacity: 0.5;
   pointer-events: none;
@@ -11453,6 +11045,37 @@ select.input {
   font-weight: 500;
   color: var(--text);
   letter-spacing: 0.1px;
+}
+
+/* 组下方的说明小字（替代原来占地方的提示条） */
+.opt-note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行式选项：左标签 / 右控件 / 右侧小字说明 */
+.opt-name {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.opt-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.opt-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 .opt-panel {
@@ -12094,6 +11717,11 @@ select.input {
   flex: none;
 }
 
+/* 等待时间变长时把文字转成警示色，避免用户以为卡死 */
+.footer-bar .wait-slow {
+  color: var(--warn);
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -12319,6 +11947,108 @@ select.input {
   line-height: 1.6;
 }
 
+/* ------------------------- 导出失败待确认（review） ------------------------- */
+
+.review-wrap {
+  padding: 26px 20px 6px;
+  text-align: center;
+}
+
+.review-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: 0 0 0 9px #fef9ec;
+}
+
+.review-wrap h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.review-wrap p {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* 失败清单：固定高度 + 滚动，条目多也不会把侧栏撑长 */
+.review-list {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-sub {
+  font-size: 11px;
+  color: var(--err);
+}
+
+.review-retry {
+  flex: none;
+  padding: 5px 7px;
+}
+
+/* 只放图标的小圆按钮（表单里的次级动作） */
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only svg {
+  transition: transform 0.3s;
+}
+
+/* 重试进行中：图标持续转（复用 .spin 的 keyframes，但不动尺寸/边框） */
+.icon-only.rotating svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.review-retry:hover:not(:disabled) .icon-only svg {
+  transform: rotate(90deg);
+}
+
 /* ------------------------------ 反馈弹层 ------------------------------ */
 /* `.pop-panel` 已给了实底，这里只留内边距与滚动 */
 
@@ -12486,7 +12216,7 @@ select.input {
     grid-template-columns: 1fr;
   }
 }
-</style></head><body><div class=&quot;app&quot;><span style=&quot;display:contents&quot;><header class=&quot;topbar&quot;><div class=&quot;brand&quot;><span class=&quot;brand-mark&quot;><svg width=&quot;19&quot; height=&quot;19&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;2.5&quot; y=&quot;3.5&quot; width=&quot;19&quot; height=&quot;17&quot; rx=&quot;2.5&quot;></rect><path d=&quot;M2.5 9.5h19M9.5 9.5v11&quot;></path><circle cx=&quot;15&quot; cy=&quot;12.6&quot; r=&quot;1.4&quot;></circle><path d=&quot;m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9&quot;></path></svg></span><span class=&quot;brand-text&quot;><span class=&quot;brand-main&quot;><span class=&quot;brand-name&quot;>BTNExcel 桥</span><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;brand-feedback&quot; title=&quot;遇到问题？点这里反馈&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20.5 12.4a7.6 7.6 0 0 1-8.2 7.6 8.6 8.6 0 0 1-2.4-.4L4.5 21l1.4-4.3a8 8 0 0 1-.9-3.6 7.4 7.4 0 0 1 6.3-7.3 7.7 7.7 0 0 1 9.2 6.6Z&quot;></path><path d=&quot;M9.4 11.6h5.2M9.4 14.6h3.4&quot;></path></svg>反馈</button></span></span><span class=&quot;brand-sub&quot;>原样导入 / 带图导出</span></span></div><div class=&quot;segmented tabs&quot; role=&quot;tablist&quot;><button role=&quot;tab&quot; aria-selected=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 16V4&quot;></path><path d=&quot;m7 9 5-5 5 5&quot;></path><path d=&quot;M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V17&quot;></path></svg></span><span class=&quot;seg-label&quot;>导入 Excel</span></button><button role=&quot;tab&quot; aria-selected=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg></span><span class=&quot;seg-label&quot;>导出为 Excel</span></button></div></header></span><main class=&quot;body&quot;><div class=&quot;stack&quot;><section class=&quot;card&quot;><header class=&quot;card-head&quot;><div class=&quot;card-head-main&quot;><h3 class=&quot;card-title&quot;>选择要导出的数据表</h3><p class=&quot;card-hint&quot;>可多选，每张表导出为 Excel 的一个工作表</p></div><div class=&quot;card-head-extra&quot;><button class=&quot;btn ghost xs&quot;>全选</button></div></header><div class=&quot;card-body&quot;><div class=&quot;pick-grid&quot;><label class=&quot;pick&quot;><input type=&quot;checkbox&quot;/><span class=&quot;pick-icon&quot;><svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><path d=&quot;M3 9.5h18M9 9.5V19.5&quot;></path></svg></span><span class=&quot;pick-name&quot; title=&quot;办公用品申请表&quot;>办公用品申请表</span></label><label class=&quot;pick&quot;><input type=&quot;checkbox&quot;/><span class=&quot;pick-icon&quot;><svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><path d=&quot;M3 9.5h18M9 9.5V19.5&quot;></path></svg></span><span class=&quot;pick-name&quot; title=&quot;2024 年度采购台账&quot;>2024 年度采购台账</span></label><label class=&quot;pick&quot;><input type=&quot;checkbox&quot;/><span class=&quot;pick-icon&quot;><svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><path d=&quot;M3 9.5h18M9 9.5V19.5&quot;></path></svg></span><span class=&quot;pick-name&quot; title=&quot;供应商名录&quot;>供应商名录</span></label></div><div class=&quot;row&quot; style=&quot;margin-top:12px&quot;><button class=&quot;btn ghost xs&quot;><svg width=&quot;13&quot; height=&quot;13&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20 11.5A8 8 0 1 0 18.4 16&quot;></path><path d=&quot;M20 5.5v6h-5.6&quot;></path></svg>刷新列表</button><span class=&quot;muted&quot;>已选 0 张</span></div></div></section><section class=&quot;card&quot;><header class=&quot;card-head&quot;><div class=&quot;card-head-main&quot;><h3 class=&quot;card-title&quot;>导出选项</h3></div></header><div class=&quot;card-body&quot;><div class=&quot;opt-group&quot;><div class=&quot;opt-label&quot;>导出方式</div><div class=&quot;segmented&quot; role=&quot;radiogroup&quot; aria-label=&quot;导出方式&quot;><button type=&quot;button&quot; role=&quot;radio&quot; aria-checked=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-label&quot;>合并为一个 Excel</span><span class=&quot;tip-anchor&quot;><span class=&quot;seg-tip&quot;>?</span></span></button><button type=&quot;button&quot; role=&quot;radio&quot; aria-checked=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-label&quot;>拆分多个 Excel</span><span class=&quot;tip-anchor&quot;><span class=&quot;seg-tip&quot;>?</span></span></button></div></div><div class=&quot;opt-group&quot;><div class=&quot;opt-label&quot;>图片嵌入方式</div><div class=&quot;segmented&quot; role=&quot;radiogroup&quot; aria-label=&quot;图片嵌入方式&quot;><button type=&quot;button&quot; role=&quot;radio&quot; aria-checked=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><circle cx=&quot;8.5&quot; cy=&quot;9.5&quot; r=&quot;1.6&quot;></circle><path d=&quot;m4 17 4.6-4.6a1.5 1.5 0 0 1 2.1 0l3.1 3.1a1.5 1.5 0 0 0 2.1 0L20 12&quot;></path></svg></span><span class=&quot;seg-label&quot;>WPS嵌入单元格图片</span><span class=&quot;tip-anchor&quot;><span class=&quot;seg-tip&quot;>?</span></span></button><button type=&quot;button&quot; role=&quot;radio&quot; aria-checked=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><circle cx=&quot;8.5&quot; cy=&quot;9.5&quot; r=&quot;1.6&quot;></circle><path d=&quot;m4 17 4.6-4.6a1.5 1.5 0 0 1 2.1 0l3.1 3.1a1.5 1.5 0 0 0 2.1 0L20 12&quot;></path></svg></span><span class=&quot;seg-label&quot;>标准浮动图片</span><span class=&quot;tip-anchor&quot;><span class=&quot;seg-tip&quot;>?</span></span></button></div></div><div class=&quot;opt-row sub&quot;><label class=&quot;check&quot;><span>图片边长</span><input class=&quot;input size-input&quot; inputMode=&quot;numeric&quot; placeholder=&quot;原图&quot; value=&quot;&quot;/><span class=&quot;muted&quot;>px</span><span class=&quot;tip-anchor&quot;><span class=&quot;help-dot&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;9&quot;></circle><path d=&quot;M12 11v5.5M12 7.8v.2&quot;></path></svg></span></span></label><span class=&quot;muted&quot;>原图原尺寸导出</span></div><div class=&quot;opt-row sub&quot;><label class=&quot;check&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/><span>全部图片都导出<span class=&quot;tip-anchor&quot;><span class=&quot;help-dot&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;9&quot;></circle><path d=&quot;M12 11v5.5M12 7.8v.2&quot;></path></svg></span></span></span></label><span class=&quot;muted&quot;>多图分列：照片 / 照片2 / 照片3…</span></div><div class=&quot;opt-row sub&quot;><label class=&quot;check&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/><span>额外输出「附件名」列<span class=&quot;tip-anchor&quot;><span class=&quot;help-dot&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;9&quot;></circle><path d=&quot;M12 11v5.5M12 7.8v.2&quot;></path></svg></span></span></span></label><label class=&quot;check&quot;><span>跳过超过</span><input class=&quot;input size-input&quot; inputMode=&quot;numeric&quot; value=&quot;10&quot;/><span class=&quot;muted&quot;>MB 的附件</span></label></div><div class=&quot;notice info&quot;><span class=&quot;notice-icon&quot;><svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;9&quot;></circle><path d=&quot;M12 11v5.5M12 7.8v.2&quot;></path></svg></span><div class=&quot;notice-text&quot;>DISPIMG 是 <b>WPS 的专有扩展</b>：用 WPS 打开可以看到图片在单元格里；用原生 Excel 打开时该单元格显示为<code>=DISPIMG(...)</code> 公式，图片仍保留在文件中。需要在 Excel 里也能看到图片，请改用「标准浮动图片」。</div></div><div class=&quot;notice info&quot;><span class=&quot;notice-icon&quot;><svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;9&quot;></circle><path d=&quot;M12 11v5.5M12 7.8v.2&quot;></path></svg></span><div class=&quot;notice-text&quot;>「全部图片都导出」已开启：附件字段里的每张图会各占一列（照片、照片2、照片3…），第 11 张起不再展开。</div></div></div></section><div class=&quot;footer-bar&quot;><span class=&quot;muted&quot;>已选 0 张 · WPS 嵌入 · 合并 · 全部图片分列</span><button class=&quot;btn primary&quot; style=&quot;margin-left:auto&quot; disabled=&quot;&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg>导出并下载</button></div></div></main></div></body></html>" loading="lazy"></iframe>
+</style></head><body><div class=&quot;app&quot;><span style=&quot;display:contents&quot;><header class=&quot;topbar&quot;><div class=&quot;brand&quot;><span class=&quot;brand-mark&quot;><svg width=&quot;19&quot; height=&quot;19&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;2.5&quot; y=&quot;3.5&quot; width=&quot;19&quot; height=&quot;17&quot; rx=&quot;2.5&quot;></rect><path d=&quot;M2.5 9.5h19M9.5 9.5v11&quot;></path><circle cx=&quot;15&quot; cy=&quot;12.6&quot; r=&quot;1.4&quot;></circle><path d=&quot;m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9&quot;></path></svg></span><span class=&quot;brand-text&quot;><span class=&quot;brand-main&quot;><span class=&quot;brand-name&quot;>BTNExcel 桥</span><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;brand-feedback&quot; title=&quot;遇到问题？点这里反馈&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20.5 12.4a7.6 7.6 0 0 1-8.2 7.6 8.6 8.6 0 0 1-2.4-.4L4.5 21l1.4-4.3a8 8 0 0 1-.9-3.6 7.4 7.4 0 0 1 6.3-7.3 7.7 7.7 0 0 1 9.2 6.6Z&quot;></path><path d=&quot;M9.4 11.6h5.2M9.4 14.6h3.4&quot;></path></svg>反馈</button></span></span><span class=&quot;brand-sub&quot;>原样导入 / 带图导出</span></span></div><div class=&quot;segmented tabs&quot; role=&quot;tablist&quot;><button role=&quot;tab&quot; aria-selected=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 16V4&quot;></path><path d=&quot;m7 9 5-5 5 5&quot;></path><path d=&quot;M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V17&quot;></path></svg></span><span class=&quot;seg-label&quot;>导入 Excel</span></button><button role=&quot;tab&quot; aria-selected=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg></span><span class=&quot;seg-label&quot;>导出为 Excel</span></button></div></header></span><main class=&quot;body&quot;><div class=&quot;stack&quot;><section class=&quot;card&quot;><header class=&quot;card-head&quot;><div class=&quot;card-head-main&quot;><h3 class=&quot;card-title&quot;>选择要导出的数据表</h3><p class=&quot;card-hint&quot;>可多选，每张表导出为 Excel 的一个工作表</p></div><div class=&quot;card-head-extra&quot;><button class=&quot;btn ghost xs&quot;>全选</button></div></header><div class=&quot;card-body&quot;><div class=&quot;pick-grid&quot;><label class=&quot;pick&quot;><input type=&quot;checkbox&quot;/><span class=&quot;pick-icon&quot;><svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><path d=&quot;M3 9.5h18M9 9.5V19.5&quot;></path></svg></span><span class=&quot;pick-name&quot; title=&quot;办公用品申请表&quot;>办公用品申请表</span></label><label class=&quot;pick&quot;><input type=&quot;checkbox&quot;/><span class=&quot;pick-icon&quot;><svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><path d=&quot;M3 9.5h18M9 9.5V19.5&quot;></path></svg></span><span class=&quot;pick-name&quot; title=&quot;2024 年度采购台账&quot;>2024 年度采购台账</span></label><label class=&quot;pick&quot;><input type=&quot;checkbox&quot;/><span class=&quot;pick-icon&quot;><svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><path d=&quot;M3 9.5h18M9 9.5V19.5&quot;></path></svg></span><span class=&quot;pick-name&quot; title=&quot;供应商名录&quot;>供应商名录</span></label></div><div class=&quot;row&quot; style=&quot;margin-top:12px&quot;><button class=&quot;btn ghost xs&quot;><svg width=&quot;13&quot; height=&quot;13&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20 11.5A8 8 0 1 0 18.4 16&quot;></path><path d=&quot;M20 5.5v6h-5.6&quot;></path></svg>刷新列表</button><span class=&quot;muted&quot;>已选 0 张</span></div></div></section><section class=&quot;card&quot;><header class=&quot;card-head&quot;><div class=&quot;card-head-main&quot;><h3 class=&quot;card-title&quot;>导出选项</h3></div></header><div class=&quot;card-body&quot;><div class=&quot;opt-group&quot;><div class=&quot;opt-label&quot;>导出方式</div><div class=&quot;segmented&quot; role=&quot;radiogroup&quot; aria-label=&quot;导出方式&quot;><button type=&quot;button&quot; role=&quot;radio&quot; aria-checked=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-label&quot;>合并为一个 Excel</span></button><button type=&quot;button&quot; role=&quot;radio&quot; aria-checked=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-label&quot;>拆分多个 Excel</span></button></div><div class=&quot;opt-note&quot;>所有选中的数据表写进同一个 Excel，每张表对应一个工作表。适合汇总归档。</div></div><div class=&quot;opt-group&quot;><div class=&quot;opt-label&quot;>图片嵌入方式</div><div class=&quot;segmented&quot; role=&quot;radiogroup&quot; aria-label=&quot;图片嵌入方式&quot;><button type=&quot;button&quot; role=&quot;radio&quot; aria-checked=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><circle cx=&quot;8.5&quot; cy=&quot;9.5&quot; r=&quot;1.6&quot;></circle><path d=&quot;m4 17 4.6-4.6a1.5 1.5 0 0 1 2.1 0l3.1 3.1a1.5 1.5 0 0 0 2.1 0L20 12&quot;></path></svg></span><span class=&quot;seg-label&quot;>WPS嵌入单元格图片</span></button><button type=&quot;button&quot; role=&quot;radio&quot; aria-checked=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><circle cx=&quot;8.5&quot; cy=&quot;9.5&quot; r=&quot;1.6&quot;></circle><path d=&quot;m4 17 4.6-4.6a1.5 1.5 0 0 1 2.1 0l3.1 3.1a1.5 1.5 0 0 0 2.1 0L20 12&quot;></path></svg></span><span class=&quot;seg-label&quot;>标准浮动图片</span></button></div><div class=&quot;opt-note&quot;>图片真正住在单元格里，随行高列宽一起显示；需要 WPS 打开才能看到，原生 Excel 会显示为 =DISPIMG(...) 公式。</div></div><div class=&quot;opt-row&quot;><span class=&quot;opt-name&quot;>图片边长</span><span class=&quot;opt-ctl&quot;><input class=&quot;input size-input&quot; inputMode=&quot;numeric&quot; placeholder=&quot;原图&quot; value=&quot;&quot;/><span class=&quot;muted&quot;>px</span><span class=&quot;tip-anchor&quot;><span class=&quot;help-dot&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;9&quot;></circle><path d=&quot;M12 11v5.5M12 7.8v.2&quot;></path></svg></span></span></span></div><div class=&quot;opt-row&quot;><label class=&quot;check&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/><span>全部图片都导出</span></label><span class=&quot;opt-hint&quot;>照片 / 照片2 / 照片3…</span></div><div class=&quot;opt-row&quot;><label class=&quot;check&quot;><input type=&quot;checkbox&quot;/><span>额外输出「附件名」列</span></label><span class=&quot;opt-hint&quot;>纯文本文件名</span></div><div class=&quot;opt-row&quot;><span class=&quot;opt-name&quot;>跳过超过</span><span class=&quot;opt-ctl&quot;><input class=&quot;input size-input&quot; inputMode=&quot;numeric&quot; value=&quot;10&quot;/><span class=&quot;muted&quot;>MB 的附件</span></span></div></div></section><div class=&quot;footer-bar&quot;><span class=&quot;muted&quot;>已选 0 张 · WPS 嵌入 · 合并 · 全部图片分列</span><button class=&quot;btn primary&quot; style=&quot;margin-left:auto&quot; disabled=&quot;&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg>导出并下载</button></div></div></main></div></body></html>" loading="lazy"></iframe>
     </section>
 
     <section class="pv">
@@ -12993,206 +12723,6 @@ body {
   font-weight: 600;
 }
 
-/* -------------------------------- 进度 -------------------------------- */
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-/* --------------------------- 醒目进度块（prog） --------------------------- */
-
-.prog {
-  --prog-tone: var(--accent);
-  --prog-tone-soft: var(--accent-soft);
-  padding: 12px 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.prog-export {
-  --prog-tone: #2563eb;
-  --prog-tone-soft: var(--blue-soft);
-}
-
-.prog-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.prog-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.prog-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prog-tone);
-  box-shadow: 0 0 0 0 var(--prog-tone);
-  animation: prog-pulse 1.4s ease-out infinite;
-  flex: none;
-}
-
-.prog:not(.spinning) .prog-label::before {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--prog-tone-soft);
-}
-
-@keyframes prog-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(15, 118, 110, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
-  }
-}
-
-.prog-export .prog-label::before {
-  animation-name: prog-pulse-export;
-}
-
-@keyframes prog-pulse-export {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.prog-pct {
-  color: var(--prog-tone);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.prog .progress {
-  height: 9px;
-  border-radius: 999px;
-  background: var(--surface-3);
-}
-
-.prog .progress-fill {
-  position: relative;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--prog-tone), color-mix(in srgb, var(--prog-tone) 72%, #ffffff));
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow: hidden;
-}
-
-/* 流动光泽：让进度条「活着」 */
-.progress-gloss {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 80%
-  );
-  background-size: 220% 100%;
-  animation: prog-gloss 1.25s linear infinite;
-}
-
-.prog:not(.spinning) .progress-gloss {
-  animation-duration: 2.4s;
-}
-
-@keyframes prog-gloss {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-/* 不确定总量：整条走流光 */
-.prog.spinning .progress-fill {
-  background: linear-gradient(
-    100deg,
-    var(--prog-tone) 0%,
-    color-mix(in srgb, var(--prog-tone) 55%, #ffffff) 50%,
-    var(--prog-tone) 100%
-  );
-  background-size: 220% 100%;
-  animation: prog-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes prog-sweep {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-.prog-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-.prog-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.prog-num {
-  color: var(--prog-tone);
-  font-weight: 700;
-  font-size: 12.5px;
-}
-
-.prog-sep {
-  color: var(--text-4);
-}
-
-.prog-detail {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* --------------------------- 环形进度（重设计） --------------------------- */
 
 .ring-wrap {
@@ -13799,7 +13329,10 @@ select.input {
 .tip-bubble {
   position: fixed;
   z-index: 9999;
-  max-width: 260px;
+  /* width: max-content 是必须的：fixed 元素是 shrink-to-fit，不写宽度时
+     可用宽度会被 left 位置挤压，靠近右边缘就会变成「一两个字一行」。 */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 8px 11px;
   border-radius: var(--radius-xs);
   background: #0f172a;
@@ -13929,6 +13462,11 @@ select.input {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.opt-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .opt-group.disabled {
   opacity: 0.5;
   pointer-events: none;
@@ -13940,6 +13478,37 @@ select.input {
   font-weight: 500;
   color: var(--text);
   letter-spacing: 0.1px;
+}
+
+/* 组下方的说明小字（替代原来占地方的提示条） */
+.opt-note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行式选项：左标签 / 右控件 / 右侧小字说明 */
+.opt-name {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.opt-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.opt-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 .opt-panel {
@@ -14581,6 +14150,11 @@ select.input {
   flex: none;
 }
 
+/* 等待时间变长时把文字转成警示色，避免用户以为卡死 */
+.footer-bar .wait-slow {
+  color: var(--warn);
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -14804,6 +14378,108 @@ select.input {
   color: var(--text-3);
   text-align: center;
   line-height: 1.6;
+}
+
+/* ------------------------- 导出失败待确认（review） ------------------------- */
+
+.review-wrap {
+  padding: 26px 20px 6px;
+  text-align: center;
+}
+
+.review-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: 0 0 0 9px #fef9ec;
+}
+
+.review-wrap h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.review-wrap p {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* 失败清单：固定高度 + 滚动，条目多也不会把侧栏撑长 */
+.review-list {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-sub {
+  font-size: 11px;
+  color: var(--err);
+}
+
+.review-retry {
+  flex: none;
+  padding: 5px 7px;
+}
+
+/* 只放图标的小圆按钮（表单里的次级动作） */
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only svg {
+  transition: transform 0.3s;
+}
+
+/* 重试进行中：图标持续转（复用 .spin 的 keyframes，但不动尺寸/边框） */
+.icon-only.rotating svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.review-retry:hover:not(:disabled) .icon-only svg {
+  transform: rotate(90deg);
 }
 
 /* ------------------------------ 反馈弹层 ------------------------------ */
@@ -15480,206 +15156,6 @@ body {
   font-weight: 600;
 }
 
-/* -------------------------------- 进度 -------------------------------- */
-
-.progress {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-/* --------------------------- 醒目进度块（prog） --------------------------- */
-
-.prog {
-  --prog-tone: var(--accent);
-  --prog-tone-soft: var(--accent-soft);
-  padding: 12px 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.prog-export {
-  --prog-tone: #2563eb;
-  --prog-tone-soft: var(--blue-soft);
-}
-
-.prog-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.prog-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.prog-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prog-tone);
-  box-shadow: 0 0 0 0 var(--prog-tone);
-  animation: prog-pulse 1.4s ease-out infinite;
-  flex: none;
-}
-
-.prog:not(.spinning) .prog-label::before {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--prog-tone-soft);
-}
-
-@keyframes prog-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(15, 118, 110, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
-  }
-}
-
-.prog-export .prog-label::before {
-  animation-name: prog-pulse-export;
-}
-
-@keyframes prog-pulse-export {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.prog-pct {
-  color: var(--prog-tone);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.prog .progress {
-  height: 9px;
-  border-radius: 999px;
-  background: var(--surface-3);
-}
-
-.prog .progress-fill {
-  position: relative;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--prog-tone), color-mix(in srgb, var(--prog-tone) 72%, #ffffff));
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow: hidden;
-}
-
-/* 流动光泽：让进度条「活着」 */
-.progress-gloss {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 80%
-  );
-  background-size: 220% 100%;
-  animation: prog-gloss 1.25s linear infinite;
-}
-
-.prog:not(.spinning) .progress-gloss {
-  animation-duration: 2.4s;
-}
-
-@keyframes prog-gloss {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-/* 不确定总量：整条走流光 */
-.prog.spinning .progress-fill {
-  background: linear-gradient(
-    100deg,
-    var(--prog-tone) 0%,
-    color-mix(in srgb, var(--prog-tone) 55%, #ffffff) 50%,
-    var(--prog-tone) 100%
-  );
-  background-size: 220% 100%;
-  animation: prog-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes prog-sweep {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
-}
-
-.prog-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-.prog-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.prog-num {
-  color: var(--prog-tone);
-  font-weight: 700;
-  font-size: 12.5px;
-}
-
-.prog-sep {
-  color: var(--text-4);
-}
-
-.prog-detail {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* --------------------------- 环形进度（重设计） --------------------------- */
 
 .ring-wrap {
@@ -16286,7 +15762,10 @@ select.input {
 .tip-bubble {
   position: fixed;
   z-index: 9999;
-  max-width: 260px;
+  /* width: max-content 是必须的：fixed 元素是 shrink-to-fit，不写宽度时
+     可用宽度会被 left 位置挤压，靠近右边缘就会变成「一两个字一行」。 */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 8px 11px;
   border-radius: var(--radius-xs);
   background: #0f172a;
@@ -16416,6 +15895,11 @@ select.input {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.opt-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .opt-group.disabled {
   opacity: 0.5;
   pointer-events: none;
@@ -16427,6 +15911,37 @@ select.input {
   font-weight: 500;
   color: var(--text);
   letter-spacing: 0.1px;
+}
+
+/* 组下方的说明小字（替代原来占地方的提示条） */
+.opt-note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行式选项：左标签 / 右控件 / 右侧小字说明 */
+.opt-name {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.opt-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.opt-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 .opt-panel {
@@ -17068,6 +16583,11 @@ select.input {
   flex: none;
 }
 
+/* 等待时间变长时把文字转成警示色，避免用户以为卡死 */
+.footer-bar .wait-slow {
+  color: var(--warn);
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -17291,6 +16811,108 @@ select.input {
   color: var(--text-3);
   text-align: center;
   line-height: 1.6;
+}
+
+/* ------------------------- 导出失败待确认（review） ------------------------- */
+
+.review-wrap {
+  padding: 26px 20px 6px;
+  text-align: center;
+}
+
+.review-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: 0 0 0 9px #fef9ec;
+}
+
+.review-wrap h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.review-wrap p {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* 失败清单：固定高度 + 滚动，条目多也不会把侧栏撑长 */
+.review-list {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-sub {
+  font-size: 11px;
+  color: var(--err);
+}
+
+.review-retry {
+  flex: none;
+  padding: 5px 7px;
+}
+
+/* 只放图标的小圆按钮（表单里的次级动作） */
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only svg {
+  transition: transform 0.3s;
+}
+
+/* 重试进行中：图标持续转（复用 .spin 的 keyframes，但不动尺寸/边框） */
+.icon-only.rotating svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.review-retry:hover:not(:disabled) .icon-only svg {
+  transform: rotate(90deg);
 }
 
 /* ------------------------------ 反馈弹层 ------------------------------ */

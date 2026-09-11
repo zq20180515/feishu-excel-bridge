@@ -3,7 +3,7 @@ import ImportPanel from './components/ImportPanel'
 import ExportPanel from './components/ExportPanel'
 import { listTables, sdkAvailable } from './lib/base-api'
 import type { TableBrief } from './lib/types'
-import { Notice, Popover } from './components/ui'
+import { Notice, Popover, copyText } from './components/ui'
 import { IconCheck, IconDownload, IconFeedback, IconSheetImage, IconUpload } from './components/icons'
 
 const APP_NAME = 'BTNExcel 桥'
@@ -26,19 +26,8 @@ function FeedbackEntry() {
 
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
 
-  const copy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      // 剪贴板被沙箱拒绝时退化为选中文本
-      const el = document.createElement('textarea')
-      el.value = text
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
-    }
-  }
+  /** 复制走 ui.tsx 里统一的实现（剪贴板被沙箱拒绝时退化为 execCommand） */
+  const copy = copyText
 
   const copyId = async () => {
     await copy(FEEDBACK_USER_ID)

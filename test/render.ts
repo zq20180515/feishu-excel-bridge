@@ -121,7 +121,7 @@ async function main() {
   const { createElement } = React
 
   const { default: MappingEditor } = await import('../src/components/MappingEditor')
-  const { Card, Segmented, Tip, Notice, Progress, Popover } = await import('../src/components/ui')
+  const { Card, Segmented, Tip, Notice, Popover } = await import('../src/components/ui')
   const { IMPORTABLE_FILE_TYPES, IMPORT_ACCEPT } = await import('../src/lib/field-meta')
   const { IconFeedback, IconFolder, IconLink } = await import('../src/components/icons')
 
@@ -238,8 +238,6 @@ async function main() {
               createElement(Tip, { text: '多图分列' }, createElement('span', { className: 'help-dot' }, '?'))),
             createElement('span', { className: 'muted' }, '多图分列：照片 / 照片2 / 照片3…')),
           createElement(Notice, null, 'DISPIMG 是 WPS 的专有扩展'),
-          createElement(Progress, { done: 1, total: 2 }),
-          createElement(Progress, { done: 0, total: 0, indeterminate: true, tone: 'export', label: '打包工作簿' }),
           createElement('div', { className: 'pick-grid' },
             createElement('label', { className: 'pick on' },
               createElement('input', { type: 'checkbox', defaultChecked: true }),
@@ -309,14 +307,7 @@ async function main() {
   ok(!!host.querySelector('.tk .tk-dot'), '色块保留圆点标识 .tk-dot')
   ok(!/map-dst/.test(html), '不再输出 .map-dst')
 
-  /* ---------- 本轮·问题 2：进度动效 ---------- */
-  console.log('\n=== 进度动效 ===')
-  ok(!!host.querySelector('.prog'), '存在醒目进度块 .prog')
-  ok(!!host.querySelector('.progress-gloss'), '进度条带流光层 .progress-gloss（动态）')
-  ok(!!host.querySelector('.prog-pct'), '进度块显示百分比 .prog-pct')
-  ok(!!host.querySelector('.prog-count'), '进度块显示 已完成/总数')
-  ok(!!host.querySelector('.prog-export'), '导出进度用独立配色 .prog-export')
-  ok(!!host.querySelector('.prog.spinning'), '无条件阶段走不确定态 .spinning')
+  /* 注：进度组件的断言已迁到 test/ui.ts（那里直接渲染真实的 RingProgress） */
 
   /* ---------- 本轮·问题 3：更多文件类型 ---------- */
   console.log('\n=== 导入文件类型扩展 ===')

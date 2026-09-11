@@ -334,7 +334,6 @@ ZIP 包内合理位置。SheetJS 会把后写入的部件丢到压缩包末尾�
 ├── block.json                   blockTypeID + url
 ├── samples/                     4 个可视样例 xlsx，可直接用 WPS 打开验证
 ├── design-preview.html          `npm run preview:ui` 生成：7 个界面状态的真实渲染预览
-├── dev-screenshot.png           开发服务器在 400px 侧栏宽下的实拍（导入页 / 导出页）
 ├── test/                        自测：roundtrip / render / ui / preview / stub-sdk / compare-wps / make-samples / make-icon
 └── src/
     ├── App.tsx                     两个 Tab：导入 / 导出 + 顶部反馈入口 + 宿主环境检测

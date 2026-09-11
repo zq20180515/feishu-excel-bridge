@@ -494,19 +494,7 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
                   }
                 />
                 <span className="muted">个</span>
-                <Tip
-                  text={
-                    <>
-                      这是<b>一次请求带几个文件</b>，不是「线程数」——
-                      上传接口禁止并发调用，所有批次都是排队的。
-                      <br />
-                      批次越大往返越少，但界面刷新越稀疏（30 个一批大约 20 秒不动）；
-                      批次小则进度更平滑。建议 <b>5–10</b>。
-                      <br />
-                      单批失败会降级为逐个重传，批次太大时这个代价也更高。
-                    </>
-                  }
-                >
+                <Tip text="一次请求带几个文件（不是「线程数」）。上传接口禁止并发，各批次都是排队的；批次越大界面刷新越稀疏，建议 5–10。">
                   <span className="help-dot">
                     <IconInfo size={12} />
                   </span>
@@ -525,7 +513,6 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
           {liveSheets.length > 0 && (
             <Card
               title="字段映射"
-              hint="每个工作表单独成表；取消勾选 = 不导入该字段；类型可改"
               extra={
                 <span className="badge subtle">
                   <IconTable size={11} />
@@ -539,18 +526,6 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
                 onLoadFields={loadFields}
                 onChange={(sheets: SourceSheet[]) => setParsed({ ...parsed, sheets: mergeSheets(sheets, blankSheets) })}
               />
-              {totalMedia > 0 && (
-                <Notice>
-                  <IconImage size={13} /> 文件里识别到 <b>{totalMedia}</b> 个图片/附件，其中{' '}
-                  <b>{uploadMedia.count}</b> 个来自「附件」字段，会一起上传
-                  {uploadMedia.bytes > 0 ? `（合计 ${formatBytes(uploadMedia.bytes)}）` : ''}。
-                  附件只能 <b>串行上传</b>，几百个附件通常要几分钟到十几分钟 ——
-                  上传期间点开「上传附件图片」即可查看每张图传到哪了。
-                </Notice>
-              )}
-              <Notice kind="warn">
-                导入会真实写入当前多维表格。同名数据表会自动加序号；同名已有字段会复用而不是重复新建。
-              </Notice>
             </Card>
           )}
 
