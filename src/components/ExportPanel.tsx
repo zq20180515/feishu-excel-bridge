@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Card, CompletionCard, Notice, RingProgress, Segmented, Tip } from './ui'
+import { useRef, useState } from 'react'
+import { Card, CompletionCard, Notice, RingProgress, Segmented, Tip, formatBytes } from './ui'
 import type { ProgressStageDef } from './ui'
 import {
   IconDownload,
@@ -8,9 +8,10 @@ import {
   IconInfo,
   IconRefresh,
   IconTable,
+  IconWarn,
 } from './icons'
 import { revealExportFile, runExport, triggerDownload } from '../lib/exporter'
-import type { ExportProgress, ExportResult } from '../lib/exporter'
+import type { ExportMediaSession, ExportProgress, ExportResult, MediaFailure } from '../lib/exporter'
 import type { TableBrief } from '../lib/types'
 
 type Props = {
@@ -21,8 +22,8 @@ type Props = {
 type ImageMode = 'dispimg' | 'float'
 /** 打包方式：一个 Excel 还是按表拆成多个（zip） */
 type PackMode = 'single' | 'perTable'
-/** 面板状态：配置 → 运行中 → 已完成 */
-type Phase = 'config' | 'running' | 'done'
+/** 面板状态：配置 → 运行中 →（图片有失败时）待确认 → 已完成 */
+type Phase = 'config' | 'running' | 'review' | 'done'
 
 const MODE_TIP: Record<ImageMode, string> = {
   dispimg:
@@ -67,6 +68,15 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
   const [error, setError] = useState('')
   const [locating, setLocating] = useState(false)
   const [revealMsg, setRevealMsg] = useState<{ kind: 'info' | 'ok' | 'warn'; text: string } | null>(null)
+  /** 图片下载有失败项时停在这里，等用户决定「逐张重试」还是「跳过」 */
+  const [mediaReview, setMediaReview] = useState<{
+    failures: MediaFailure[]
+    retry: ExportMediaSession['retry']
+  } | null>(null)
+  /** 正在重试的失败项 id（空数组 = 当前没有重试在跑） */
+  const [retrying, setRetrying] = useState<string[]>([])
+  /** onMediaReady 挂起期间保存的 resolve；用户点按钮后放行 */
+  const resolveRef = useRef<((v: 'continue' | 'abort') => void) | null>(null)
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -116,6 +126,18 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
         // 0 / 空 → 原图原尺寸
         imageSizePx: parsedSize > 0 ? Math.min(2000, Math.max(16, parsedSize)) : undefined,
         maxImageMb,
+        /**
+         * 有图片没下下来时**先不打包**，停在这一步让用户逐张重试或跳过。
+         * 否则用户只会看到「有 N 张失败」，却不知道该补哪几张。
+         * 这里返回一个挂起的 Promise，由界面上的按钮来放行。
+         */
+        onMediaReady: (session) => {
+          setMediaReview({ failures: session.failures, retry: session.retry })
+          setPhase('review')
+          return new Promise<'continue' | 'abort'>((resolve) => {
+            resolveRef.current = resolve
+          })
+        },
         onProgress: (p) => setProgress(p),
       })
       setResult(res)
@@ -128,6 +150,38 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
       setBusy(false)
       setProgress(null)
     }
+  }
+
+  /** 重试失败项；不传 ids = 全部重试。全部成功则自动放行去打包 */
+  const retryFailures = async (ids?: string[]) => {
+    if (!mediaReview) return
+    const targets = ids ?? mediaReview.failures.map((f) => f.id)
+    setRetrying(targets)
+    try {
+      const still = await mediaReview.retry(targets)
+      const stillIds = new Set(still.map((s) => s.id))
+      // 本次重试过的项里，没出现在 still 中的就是成功了
+      const next = mediaReview.failures
+        .filter((f) => !targets.includes(f.id) || stillIds.has(f.id))
+        .map((f) => still.find((s) => s.id === f.id) ?? f)
+      setMediaReview({ ...mediaReview, failures: next })
+      if (next.length === 0) {
+        resolveRef.current?.('continue')
+        resolveRef.current = null
+        setMediaReview(null)
+        setPhase('running')
+      }
+    } finally {
+      setRetrying([])
+    }
+  }
+
+  /** 跳过失败的图片继续导出（它们在 Excel 里是空单元格） */
+  const skipFailures = () => {
+    resolveRef.current?.('continue')
+    resolveRef.current = null
+    setMediaReview(null)
+    setPhase('running')
   }
 
   /** 「打开文件所在位置」：插件 iframe 没有文件系统权限，只能请用户挑目录或引导到下载文件夹 */
@@ -168,6 +222,66 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
         <div className="footer-bar">
           <span className="muted">导出进行中，大文件可能需要几分钟</span>
         </div>
+      </div>
+    )
+  }
+
+  /* ==================== 有图片失败：停下来让用户决定 ==================== */
+  if (phase === 'review' && mediaReview) {
+    const failCount = mediaReview.failures.length
+    return (
+      <div className="run-page">
+        <div className="review-wrap">
+          <div className="review-icon">
+            <IconWarn size={30} />
+          </div>
+          <h2>有 {failCount} 张图片没下载成功</h2>
+          <p>
+            可以点右侧的刷新按钮逐张重试，或直接跳过。
+            <br />
+            跳过的图片在导出的 Excel 里会是空单元格。
+          </p>
+        </div>
+
+        <div className="review-list">
+          {mediaReview.failures.map((f) => {
+            const busy = retrying.includes(f.id)
+            return (
+              <div className="review-item" key={f.id}>
+                <span className="review-main">
+                  <span className="review-name" title={`${f.tableName} · ${f.name}`}>
+                    {f.name}
+                  </span>
+                  <span className="review-sub">
+                    {formatBytes(f.size)} · {f.reason}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="btn ghost xs review-retry"
+                  title={busy ? '正在重新下载…' : '重新下载这一张'}
+                  aria-label={`重新下载 ${f.name}`}
+                  disabled={busy}
+                  onClick={() => void retryFailures([f.id])}
+                >
+                  <span className={busy ? 'icon-only rotating' : 'icon-only'}>
+                    <IconRefresh size={13} />
+                  </span>
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="done-actions">
+          <button className="btn ghost" onClick={skipFailures}>
+            跳过，继续导出
+          </button>
+          <button className="btn primary" disabled={retrying.length > 0} onClick={() => void retryFailures()}>
+            {retrying.length > 0 ? '重试中…' : `全部重试（${failCount}）`}
+          </button>
+        </div>
+        <div className="note-line">下载失败多是临时链接失效或网络抖动，重试通常就能成功</div>
       </div>
     )
   }

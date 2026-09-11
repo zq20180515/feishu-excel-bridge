@@ -20,12 +20,49 @@ export const stubState = {
 export function resetUploadStub() {
   stubState.mode = 'ok'
   stubState.calls = []
+  exportFixture.withAttachment = false
+  exportFixture.attachmentUrlOk = true
+}
+
+/**
+ * 导出流程的假数据。
+ * 切换 `withAttachment` 可以让表里出现一个附件字段，
+ * `attachmentUrlOk = false` 用来模拟「取不到下载地址」这种失败。
+ */
+export const exportFixture = {
+  withAttachment: false,
+  attachmentUrlOk: true,
+}
+
+function makeStubTable() {
+  const fields = [
+    { id: 'fld_text', name: '工号', type: 1 },
+    ...(exportFixture.withAttachment ? [{ id: 'fld_img', name: '照片', type: 17 }] : []),
+  ]
+  const records = [
+    {
+      recordId: 'rec1',
+      fields: exportFixture.withAttachment
+        ? {
+            fld_text: 'BTN001',
+            fld_img: [{ name: 'a.jpg', size: 1024, type: 'image/jpeg', token: 'tok_a' }],
+          }
+        : { fld_text: 'BTN001' },
+    },
+  ]
+  return {
+    getName: async () => '员工档案',
+    getFieldMetaList: async () => fields,
+    getRecordsByPage: async () => ({ records, hasMore: false }),
+    getCellAttachmentUrls: async (tokens: string[]) =>
+      exportFixture.attachmentUrlOk ? tokens.map((t) => `https://example.invalid/${t}.jpg`) : [],
+  }
 }
 
 export const bitable = {
   base: {
     getTableMetaList: async () => [],
-    getTableById: async () => ({ id: 'tbl_stub', name: 'stub' }),
+    getTableById: async () => makeStubTable(),
     addTable: async () => ({ id: 'tbl_stub' }),
     batchUploadFile: async (files: File[]) => {
       stubState.calls.push(files.length)

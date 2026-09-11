@@ -2310,6 +2310,108 @@ select.input {
   line-height: 1.6;
 }
 
+/* ------------------------- 导出失败待确认（review） ------------------------- */
+
+.review-wrap {
+  padding: 26px 20px 6px;
+  text-align: center;
+}
+
+.review-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: 0 0 0 9px #fef9ec;
+}
+
+.review-wrap h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.review-wrap p {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* 失败清单：固定高度 + 滚动，条目多也不会把侧栏撑长 */
+.review-list {
+  max-height: 216px;
+  overflow-y: auto;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-sub {
+  font-size: 11px;
+  color: var(--err);
+}
+
+.review-retry {
+  flex: none;
+  padding: 5px 7px;
+}
+
+/* 只放图标的小圆按钮（表单里的次级动作） */
+.icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-only svg {
+  transition: transform 0.3s;
+}
+
+/* 重试进行中：图标持续转（复用 .spin 的 keyframes，但不动尺寸/边框） */
+.icon-only.rotating svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.review-retry:hover:not(:disabled) .icon-only svg {
+  transform: rotate(90deg);
+}
+
 /* ------------------------------ 反馈弹层 ------------------------------ */
 /* `.pop-panel` 已给了实底，这里只留内边距与滚动 */
 

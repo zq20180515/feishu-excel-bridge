@@ -492,6 +492,66 @@ async function main() {
   ok(stubState.calls.length === 0, 'shouldStop 为真时不发起任何上传', { calls: stubState.calls.length })
   ok(upOut.tokens.every((t) => t === null), '中断时全部文件保持空 token')
 
+  /* ============ 10. 导出：失败项可重试 / 可跳过 ============ */
+  console.log('\n=== 10. 导出流程的失败处理 ===')
+  const { runExport } = await import('../src/lib/exporter')
+  const { exportFixture } = await import('./stub-sdk')
+
+  const baseOpts = {
+    tableIds: ['tbl_stub'],
+    imageMode: 'float' as const,
+    embedImages: true,
+    packMode: 'single' as const,
+    allImages: true,
+    attachmentNameColumn: true,
+    maxImageMb: 10,
+  }
+
+  // ① 无失败 —— 不该打断流程，直接产出文件
+  let mediaReadyCalled = false
+  let exportOut = await runExport({
+    ...baseOpts,
+    onMediaReady: async () => {
+      mediaReadyCalled = true
+      return 'continue'
+    },
+  })
+  ok(!mediaReadyCalled, '全部下载成功时不调用 onMediaReady（按正常流程直接导出）')
+  ok(/\.xlsx$/.test(exportOut.fileName), '产出 xlsx', { name: exportOut.fileName })
+  ok(exportOut.blob.size > 0, '产物非空')
+
+  // ② 有失败 —— 停下来把清单交给界面
+  exportFixture.withAttachment = true
+  exportFixture.attachmentUrlOk = false
+  type Seen = { failures: { name: string; reason: string }[]; retry: unknown }
+  let seen: Seen | null = null
+  exportOut = await runExport({
+    ...baseOpts,
+    onMediaReady: async (session) => {
+      seen = session as unknown as Seen
+      return 'continue'
+    },
+  })
+  ok(!!seen, '有下载失败时调用 onMediaReady（停下来等用户决定）')
+  ok(seen!.failures.length === 1, '失败清单里列出失败项', { n: seen!.failures.length })
+  ok(/a\.jpg/.test(seen!.failures[0]?.name ?? ''), '失败项带文件名')
+  ok(/未取到下载地址/.test(seen!.failures[0]?.reason ?? ''), '失败项带原因', {
+    reason: seen!.failures[0]?.reason,
+  })
+  ok(typeof seen!.retry === 'function', '提供 retry 方法供逐张重试')
+  ok(exportOut.blob.size > 0, '用户选择「跳过」后仍能产出文件')
+
+  // ③ 用户放弃 —— 不产出文件
+  let aborted = false
+  exportFixture.withAttachment = true
+  exportFixture.attachmentUrlOk = false
+  try {
+    await runExport({ ...baseOpts, onMediaReady: async () => 'abort' })
+  } catch (e) {
+    aborted = /取消/.test(String((e as Error)?.message ?? e))
+  }
+  ok(aborted, '返回 abort 时抛错（不产出文件）')
+
   console.log(`\n${failed === 0 ? '真实组件渲染校验全部通过 ✅' : `失败 ${failed} 项 ❌`}`)
   process.exit(failed === 0 ? 0 : 1)
 }

@@ -27,6 +27,26 @@ export type ExportProgress = {
  */
 export type ExportPackMode = 'single' | 'perTable'
 
+/** 一个下载失败的附件（可逐张重试） */
+export type MediaFailure = {
+  id: string
+  name: string
+  /** 字节数 */
+  size: number
+  reason: string
+  tableName: string
+}
+
+/**
+ * 图片下载阶段的中间态。
+ * 交给界面决定「逐张重试」还是「跳过继续」—— 下载全部成功时不会走到这里。
+ */
+export type ExportMediaSession = {
+  failures: MediaFailure[]
+  /** 重试指定失败项（不传 = 全部失败项）；返回重试后**仍然失败**的项 */
+  retry: (ids?: string[]) => Promise<MediaFailure[]>
+}
+
 export type ExportOptions = {
   tableIds: string[]
   /** dispimg = WPS 内嵌单元格；float = 浮动图片锚定到单元格 */
@@ -56,6 +76,14 @@ export type ExportOptions = {
   imageSizePx?: number
   /** 超过该大小的附件不下载（MB） */
   maxImageMb: number
+  /**
+   * 图片下载完成后、打包生成 Excel 之前调用。
+   *
+   * 有失败项时界面可以在这里让用户**逐张重试**或**跳过**；
+   * 返回 `'abort'` 表示放弃本次导出（不生成文件）。
+   * 全部成功时不会调用这个钩子。
+   */
+  onMediaReady?: (session: ExportMediaSession) => Promise<'continue' | 'abort'>
   onProgress?: (p: ExportProgress) => void
 }
 
@@ -142,6 +170,36 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
     items?: StageItem[],
   ) => opts.onProgress?.({ stage, phase, done, total, detail, items })
 
+  /**
+   * 待下载的附件任务。
+   * 保留 `table` / `recordId` / `fieldId` 是为了**下载失败后能逐张重试** ——
+   * 重试要重新调 `getCellAttachmentUrls` 取新的临时链接。
+   */
+  type ImgTask = {
+    /** 全局唯一（`表序::表内序号`），便于界面按 id 重试 */
+    id: string
+    row: number
+    col: number
+    token: string
+    name: string
+    size: number
+    type: string
+    recordId: string
+    fieldId: string
+    table: unknown
+    tableName: string
+    /** 在所属表的 imgTasks 里的下标，用于回填明细状态 */
+    idx: number
+    /** 所属表的图片收集数组 —— 重试成功时往这里补，避免跨表串味 */
+    sink: OutCellImage[]
+  }
+
+  /** 下载失败的附件，交给界面决定重试或跳过 */
+  const failedTasks: ImgTask[] = []
+  /** 失败项在明细列表里的条目，重试成功后要把状态改回来 */
+  const itemsByTaskId = new Map<string, StageItem>()
+  const failureReason = new Map<string, string>()
+
   const tableIds = opts.tableIds.filter(Boolean)
   if (!tableIds.length) throw new Error('请至少选择一个数据表')
 
@@ -202,19 +260,9 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
 
     // 先建 rows + 收集需要下载的附件
     const rows: (string | number | boolean | null)[][] = []
-    type ImgTask = {
-      /** 在 imgTasks 里的下标，用于回填明细状态 */
-      idx: number
-      row: number
-      col: number
-      token: string
-      name: string
-      size: number
-      type: string
-      recordId: string
-      fieldId: string
-    }
     const imgTasks: ImgTask[] = []
+    /** 本表要嵌进单元格的图片（提前声明，任务里要引用它以便重试时回填） */
+    const cellImages: OutCellImage[] = []
 
     for (let ri = 0; ri < records.length; ri++) {
       const rec = records[ri] as Record<string, unknown>
@@ -247,6 +295,7 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
           }
           row.push(null)
           imgTasks.push({
+            id: `${ti}::${imgTasks.length}`,
             idx: imgTasks.length,
             row: ri + 1,
             col: ci,
@@ -256,6 +305,9 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
             type: a.type,
             recordId,
             fieldId: col.field.id,
+            table,
+            tableName,
+            sink: cellImages,
           })
         } else if (col.kind === 'attachmentNames') {
           row.push((namesByField.get(col.field.id) ?? []).join('\n'))
@@ -270,7 +322,6 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
     }
 
     // 下载图片：先拿临时下载地址，再取二进制
-    const cellImages: OutCellImage[] = []
     if (imgTasks.length) {
       /** 每张图一条明细，界面展开后可看到具体下载到哪一张 */
       const imgItems: StageItem[] = imgTasks.map((t) => ({
@@ -314,48 +365,49 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
           const item = imgItems[task.idx]
           const url = urls[k]
 
-          if (!url) {
+          /** 记一次失败：同时落到明细状态、重试队列和最终报告里 */
+          const markFail = (reason: string) => {
             downloadFailures++
             if (item) {
               item.state = 'fail'
-              item.meta = `${fmtSize(task.size || 0)} · 未取到下载地址`
+              item.meta = `${fmtSize(task.size || 0)} · ${reason}`
+              itemsByTaskId.set(task.id, item)
             }
-            errors.push(`附件「${task.name}」未取得下载地址（临时链接生成失败）`)
+            failureReason.set(task.id, reason)
+            failedTasks.push(task)
+            errors.push(`附件「${task.name}」下载失败：${reason}`)
+          }
+
+          if (!url) {
+            markFail('未取到下载地址')
           } else {
             /*
              * 失败重试一次。
              * 临时链接刚生成就失效、或网络抖动都很常见，重试往往就过了 ——
-             * 用户拿到「有 N 张没导出成功」却不知道是哪几张，体验很差，
-             * 所以这里尽量把能救的救回来。
+             * 用户拿到「有 N 张没导出成功」却不知道是哪几张，体验很差。
              */
-            for (let attempt = 0; attempt < 2; attempt++) {
+            let ok = false
+            for (let attempt = 0; attempt < 2 && !ok; attempt++) {
               try {
                 const res = await fetch(url, { signal: timeoutSignal(IMAGE_FETCH_TIMEOUT_MS) })
                 if (!res.ok) throw new Error(`HTTP ${res.status}`)
                 const buf = await res.arrayBuffer()
                 const mime = res.headers.get('content-type') || task.type
                 const ext = guessExtFromMime(mime, task.name)
-                const img: OutImage = {
-                  name: downloadName(task.name, ext),
-                  ext,
-                  bytes: new Uint8Array(buf),
-                }
-                cellImages.push({ row: task.row, col: task.col, img })
+                cellImages.push({
+                  row: task.row,
+                  col: task.col,
+                  img: { name: downloadName(task.name, ext), ext, bytes: new Uint8Array(buf) },
+                })
                 totalImages++
+                ok = true
                 if (item) {
                   item.state = 'done'
                   item.meta = fmtSize(task.size || 0)
                 }
-                break
               } catch (e) {
                 if (attempt === 0) continue
-                const msg = String((e as Error)?.message ?? e)
-                downloadFailures++
-                if (item) {
-                  item.state = 'fail'
-                  item.meta = `${fmtSize(task.size || 0)} · ${msg}`
-                }
-                errors.push(`附件「${task.name}」下载失败：${msg}`)
+                markFail(String((e as Error)?.message ?? e))
               }
             }
           }
@@ -388,6 +440,82 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
     })
 
     summary.push({ table: tableName, records: records.length, images: cellImages.length })
+  }
+
+  /* ---------- 下载完成：有失败项就交给界面决定「重试 / 跳过」 ---------- */
+  if (failedTasks.length > 0 && opts.onMediaReady) {
+    /**
+     * 逐张重试。
+     * 首次下载是「按单元格批量」，重试改成一张一张来 ——
+     * 失败项通常只有几张，逐个更好定位，也避免一整批因一张失败而白跑。
+     */
+    const retry = async (ids?: string[]): Promise<MediaFailure[]> => {
+      const targets = ids?.length
+        ? failedTasks.filter((t) => ids.includes(t.id))
+        : [...failedTasks]
+      const stillFailed: MediaFailure[] = []
+
+      for (const task of targets) {
+        let reason = ''
+        try {
+          const urls = await withTimeout(
+            getAttachmentUrls(task.table as never, [task.token], task.fieldId, task.recordId),
+            60_000,
+            '获取附件下载地址',
+          )
+          const url = urls?.[0]
+          if (!url) throw new Error('未取到下载地址')
+          const res = await fetch(url, { signal: timeoutSignal(IMAGE_FETCH_TIMEOUT_MS) })
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const buf = await res.arrayBuffer()
+          const mime = res.headers.get('content-type') || task.type
+          const ext = guessExtFromMime(mime, task.name)
+          task.sink.push({
+            row: task.row,
+            col: task.col,
+            img: { name: downloadName(task.name, ext), ext, bytes: new Uint8Array(buf) },
+          })
+          totalImages++
+          // 重试成功 → 把先前记下的失败撤掉，否则最终报告还会说它失败
+          downloadFailures = Math.max(0, downloadFailures - 1)
+          const item = itemsByTaskId.get(task.id)
+          if (item) {
+            item.state = 'done'
+            item.meta = fmtSize(task.size || 0)
+          }
+          const at = failedTasks.indexOf(task)
+          if (at >= 0) failedTasks.splice(at, 1)
+          const errAt = errors.findIndex((e) => e.includes(`附件「${task.name}」下载失败`))
+          if (errAt >= 0) errors.splice(errAt, 1)
+        } catch (e) {
+          reason = String((e as Error)?.message ?? e)
+          const item = itemsByTaskId.get(task.id)
+          if (item) item.meta = `${fmtSize(task.size || 0)} · ${reason}`
+        }
+        if (reason) {
+          stillFailed.push({
+            id: task.id,
+            name: task.name,
+            size: task.size,
+            reason,
+            tableName: task.tableName,
+          })
+        }
+      }
+      return stillFailed
+    }
+
+    const decision = await opts.onMediaReady({
+      failures: failedTasks.map((t) => ({
+        id: t.id,
+        name: t.name,
+        size: t.size,
+        reason: failureReason.get(t.id) ?? '下载失败',
+        tableName: t.tableName,
+      })),
+      retry,
+    })
+    if (decision === 'abort') throw new Error('已取消导出')
   }
 
   if (opts.embedImages && opts.allImages) {
