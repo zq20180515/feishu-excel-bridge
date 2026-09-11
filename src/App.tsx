@@ -135,6 +135,25 @@ function FeedbackEntry() {
   )
 }
 
+/** 宿主环境的连接错误常常是英文原文（如 `time out`），翻译成能照着做的提示 */
+function hostHint(): string {
+  const here = typeof window !== 'undefined' ? window.location?.href ?? '' : ''
+  return `如果你是在浏览器里直接打开本页面，请把${
+    here ? `「${here}」` : '本页地址'
+  }填入「多维表格 → 插件 → 自定义插件」后再试 —— 插件必须运行在多维表格宿主中，才能读写数据表。`
+}
+
+function humanizeHostError(msg: string): string {
+  const m = msg.toLowerCase()
+  if (m.includes('time out') || m.includes('timeout')) {
+    return `连接多维表格超时（SDK 返回：${msg}）。${hostHint()}`
+  }
+  if (m.includes('host not registered') || m.includes('not registered') || m.includes('bridge')) {
+    return `未能与多维表格宿主通信（SDK 返回：${msg}）。${hostHint()}`
+  }
+  return msg
+}
+
 export default function App() {
   const [tab, setTab] = useState<'import' | 'export'>('import')
   const [tables, setTables] = useState<TableBrief[]>([])
@@ -147,7 +166,7 @@ export default function App() {
       setTables(list)
       setBootError('')
     } catch (e) {
-      setBootError(String((e as Error)?.message ?? e))
+      setBootError(humanizeHostError(String((e as Error)?.message ?? e)))
     } finally {
       setBooting(false)
     }
@@ -157,7 +176,7 @@ export default function App() {
     document.title = APP_NAME
     if (!sdkAvailable()) {
       setBootError(
-        '未检测到多维表格插件运行环境（bitable.base 不可用）。请把本插件地址填入多维表格的「自定义插件」入口后再使用。',
+        `未检测到多维表格插件宿主环境。如果你是在浏览器里直接打开本页面，这属于正常现象 —— ${hostHint()}此时界面仍可预览，但读写数据表的功能不可用。`,
       )
       setBooting(false)
       return

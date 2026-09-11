@@ -5,9 +5,24 @@ import type { FieldBrief, TableBrief } from './types'
 /** SDK 版本间类型名有差异，这里统一按结构化数据用，避免被类型定义绑死 */
 type AnyTable = any
 
+/**
+ * 是否处于多维表格插件宿主中。
+ *
+ * 只判断 `bitable.base` 存在是不够的：**在普通浏览器里直接打开 dev server 时，
+ * SDK 对象照样存在，但它的 Promise 永远不 settle**（既 resolve 也不 reject），
+ * 于是界面会一直停在「正在读取数据表…」，看起来像卡死。
+ *
+ * 插件一定是以 iframe 形式被飞书嵌入的，所以再加一条「是否在 iframe 内」的判断，
+ * 就能在浏览器直开时给出明确提示，而不是无休止等待。
+ */
 export function sdkAvailable(): boolean {
   try {
-    return !!(bitable && (bitable as any).base)
+    if (!bitable || !(bitable as any).base) return false
+    // 跨域 iframe 里比较 window 引用本身是安全的（只有访问其属性才会抛错）
+    const top = window.top
+    // 非浏览器环境（如单元测试）没有 top，此时不因这条判断而否决
+    if (!top) return true
+    return window.self !== top
   } catch {
     return false
   }

@@ -101,6 +101,46 @@ npx serve dist       # 或丢到你们内网 IIS / nginx
 - **不要设置 `X-Frame-Options` 和 CSP `frame-ancestors`**，否则飞书 iframe 无法嵌入（`vite.config.ts` 已经留了注释）
 - 必须是 **HTTPS**（`localhost` 除外），否则 iframe 里部分能力会被浏览器拦
 
+### 本地调试的三种方式
+
+改 UI 不必每次都进飞书。按「能看到什么」分三层，从快到准：
+
+| 方式 | 怎么开 | 能看到 | 看不到 |
+| --- | --- | --- | --- |
+| ① 静态预览 | `npm run preview:ui` → 打开 `design-preview.html` | 7 个界面状态（导入/导出的 空态·映射·进行中·完成），400px 侧栏宽 | 交互（点击、拖拽） |
+| ② 浏览器直开 | `npm run dev` → 浏览打开 `http://localhost:5173` | 完整界面 + 真实交互（切标签、展开类型胶囊、开关选项） | 读写数据表（无宿主，数据表列表为空） |
+| ③ 飞书内 | `npm run dev` + 把 `http://localhost:5173` 填进「自定义插件」 | 全流程，含真实读写 | — |
+
+方式 ② 打开时顶部会有一条**红色提示条**，这是**预期行为**（见下），界面本身完整可用，最适合调样式与交互。
+
+#### 为什么浏览器直开会报警
+
+多维表格插件是 iframe，SDK 必须与飞书宿主通信。在普通浏览器里：
+
+- 页面**照常渲染** —— 品牌区、步骤条、拖放区、选项都能看能点
+- 但 SDK 拿不到宿主：`getTableMetaList()` 要么长时间挂起，要么超时抛 `time out`
+- 插件会**显式提示**这种情况，而不是无声地卡在「正在读取数据表…」
+
+判定依据是「是否处于 iframe 中」：直开时 `window.self === window.top`，据此可确定不是宿主环境。
+（`base-api.ts` 的 `sdkAvailable()` 就是做这件事。）
+
+#### ⚠️ Chrome 142+ 会拦 localhost
+
+Chrome 142 起默认开启 **Local Network Access Checks**，飞书页面访问 `localhost` 可能被拦。
+症状很典型：**浏览器里能正常打开，飞书侧栏里却一片空白**。
+
+解法：地址栏输入 `chrome://flags/#local-network-access-check` → 设为 **Disabled** → 重启浏览器。
+
+#### 现象对照表
+
+| 现象 | 原因 |
+| --- | --- |
+| 浏览器能打开，飞书侧栏空白 | Chrome 本地网络访问被拦（见上）；或地址填错 |
+| 顶部提示「未检测到多维表格插件宿主环境」 | 在浏览器里直开，正常；要读写数据必须走飞书 |
+| 提示「连接多维表格超时（time out）」 | 同上 —— SDK 等不到宿主响应后超时 |
+| 点按钮报 SDK 相关错误 | 确认是在飞书插件容器里点，而不是普通浏览器标签页 |
+| 改了代码界面没变 | iframe 不会自动重建，在插件里重新加载一次 |
+
 ### 方式 B：走飞书开发者后台正式发布
 
 ```bash
@@ -278,16 +318,19 @@ ZIP 包内合理位置。SheetJS 会把后写入的部件丢到压缩包末尾�
 ├── app.json                     appId + output（opdev 上传用）
 ├── block.json                   blockTypeID + url
 ├── samples/                     4 个可视样例 xlsx，可直接用 WPS 打开验证
-├── test/                        自测：roundtrip / render / compare-wps / make-samples / make-icon
+├── design-preview.html          `npm run preview:ui` 生成：7 个界面状态的真实渲染预览
+├── dev-screenshot.png           开发服务器在 400px 侧栏宽下的实拍（导入页 / 导出页）
+├── test/                        自测：roundtrip / render / ui / preview / stub-sdk / compare-wps / make-samples / make-icon
 └── src/
-    ├── App.tsx                     两个 Tab：导入 / 导出 + 顶部反馈入口
-    ├── styles.css                  素直风格：白卡 + 1px 边框 + 深青点缀
+    ├── App.tsx                     两个 Tab：导入 / 导出 + 顶部反馈入口 + 宿主环境检测
+    ├── styles.css                  现代工具风：白卡 + 大圆角 + teal 强调 + 近黑主按钮
     ├── components/
     │   ├── ImportPanel.tsx         拖拽解析 → 映射 → 选项 → 进度/结果（空白表跳过）
     │   ├── MappingEditor.tsx       多 sheet 字段映射（单列自适应，无横向滚动）
     │   ├── ExportPanel.tsx         数据表多选 + 嵌入方式 + 进度 + 定位文件
     │   ├── icons.tsx               线性图标集（无图标库依赖）
-    │   └── ui.tsx                  Card / Notice / Progress / Segmented / Tip / Popover
+    │   └── ui.tsx                  Card / Notice / Progress / RingProgress / Steps /
+    │                               CompletionCard / Segmented / Tip / Popover
     └── lib/
         ├── types.ts                数据模型
         ├── xml.ts                  极简 XML 工具（浏览器/Node 行为一致）
@@ -295,7 +338,7 @@ ZIP 包内合理位置。SheetJS 会把后写入的部件丢到压缩包末尾�
         ├── infer.ts                值归一化 / 类型推断 / 日期数字解析
         ├── excel-read.ts           xlsx 解析：值 + DISPIMG + 浮动图锚点
         ├── excel-write.ts          xlsx 生成：数据 + 内嵌图/浮动图 + ZIP 规范化重打包
-        ├── base-api.ts             SDK 封装：建表/建字段/征用空白列/写记录/选项 id/串行上传
+        ├── base-api.ts             SDK 封装：宿主检测/建表/建字段/征用空白列/写记录/选项 id/串行上传
         ├── value-convert.ts        Excel 值 ⇄ 多维表格值（含单选多选的 { id, text }）
         ├── importer.ts             导入执行器
         └── exporter.ts             导出执行器
