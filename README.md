@@ -304,9 +304,11 @@ ZIP 包内合理位置。SheetJS 会把后写入的部件丢到压缩包末尾�
 ## 七、自测
 
 ```bash
-npm test                   # roundtrip + render 两套断言
+npm test                   # roundtrip + render + ui 三套断言
 npm run test:roundtrip     # 解析 + 生成 + 图片尺寸 + 多图分列 + 单选写值 + ZIP 结构
 npm run test:render        # 映射区/导出面板的 DOM 结构断言
+npm run test:ui            # 真实组件渲染断言（stub 掉 SDK 后直接渲染面板）
+npm run preview:ui         # 生成 design-preview.html，浏览器里肉眼验收 7 个界面状态
 npm run make:samples       # 生成 samples/ 下 4 个可视样例，可直接用 WPS 打开验证
 ```
 
@@ -329,8 +331,21 @@ npm run make:samples       # 生成 samples/ 下 4 个可视样例，可直接�
 - **空白工作表跳过**：`.sheet-skip-tag` 列出被跳过的表名、提示含「已跳过」、`.sheet-block` 数量等于真实 sheet 数
 - **导出选项层级**：「图片边长」独占一个 `.opt-row`（与「全部图片都导出」同级），且**不在** `.opt-group` 内
 
+`test:ui` 通过 `--alias` 把 `@lark-base-open/js-sdk` 换成 `test/stub-sdk.ts`，
+**直接渲染真实的面板组件**（`App` / `ImportPanel` / `ExportPanel`），覆盖上面那套「复刻结构」测不到的部分：
+
+- **步骤条**：`.step.done` / `.step.cur` 在 `current = 0/1/2` 各阶段正确；传 `current = items.length` 时三步全 `done` 且无 `cur`
+- **hero 空态**：未选文件时渲染 `.hero` + `.hero-art`（SVG 图标）+ `<h2>`，且此时**不**渲染完成页与底部栏
+- **环形进度**：`.ring-bg` + `.ring-fg` 两段圆环、按 `done/total` 算出百分比、`aria-valuenow` 正确；不确定态加 `.spinning` 显示 `—` 且不暴露 `aria-valuenow`
+- **完成态**：`.success-wrap` / `.success-ring` / `.stat-grid` 4 格 / `.done-actions` / `.note-line`
+- **回归护栏**：没有 `<table>`、拖放区与 file input 仍在、「表头在第 N 行」「重新解析」「导入选项」入口未丢
+
 > 注意 1：`Popover` 的内容是**打开后才挂载**的，所以测弹层断言前必须先 `click()` 触发器再 `act()` 冲刷一次。
 > 注意 2：`.pop-panel` 必须显式给不透明背景，否则弹层会和页面文字透叠（这正是本轮修的 bug），样式见 `styles.css` 的 `.pop-panel`。
+> 注意 3：`test/render.ts` 是「复刻结构」式的断言，改了真实组件它不会跟着变 —— 新增 UI 请优先补 `test/ui.ts`。
+
+`test/preview.ts`（`npm run preview:ui`）用 `renderToStaticMarkup` 把 7 个界面状态
+渲进 400px 宽的 iframe，产出一个 `design-preview.html`，用于改版后快速肉眼验收。
 
 `test/compare-wps.py` 会把本插件产出与**真实 WPS 产出的工作簿**做结构比对（需要机器上有 WPS 存过的含图文件），
 用于防回归 —— 写 DISPIMG 那四个坑就是靠它定位的。

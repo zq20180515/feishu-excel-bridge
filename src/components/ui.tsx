@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { IconCheck, IconError, IconInfo, IconWarn } from './icons'
 
@@ -101,6 +101,148 @@ export function Progress({
         {detail && <span className="prog-detail">{detail}</span>}
       </div>
     </div>
+  )
+}
+
+/* ---------------------------- 环形进度（重设计） ---------------------------- */
+
+/**
+ * 环形进度卡：用于导入/导出的主进度展示。
+ * - `spinning` 时环形走不确定态（缺口绕圈），百分比显示为 —。
+ * - 与条形 `Progress` 互补：环形给主流程，条形给紧凑/次级场景。
+ */
+export function RingProgress({
+  done,
+  total,
+  label,
+  detail,
+  tone = 'import',
+  indeterminate,
+}: {
+  done: number
+  total: number
+  label?: ReactNode
+  detail?: ReactNode
+  tone?: 'import' | 'export'
+  indeterminate?: boolean
+}) {
+  const safeTotal = Math.max(1, total)
+  const pct = Math.max(0, Math.min(100, Math.round((done / safeTotal) * 100)))
+  const spinning = !!indeterminate || pct === 0
+
+  const R = 42
+  const CIRC = 2 * Math.PI * R
+  const offset = spinning ? CIRC * 0.72 : CIRC * (1 - pct / 100)
+
+  return (
+    <div className={`progress-card prog-${tone}${spinning ? ' spinning' : ''}`}>
+      <div
+        className="ring-wrap"
+        role="progressbar"
+        aria-valuenow={spinning ? undefined : pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuetext={spinning ? '进行中' : `${pct}%`}
+      >
+        <svg width="118" height="118" viewBox="0 0 100 100" aria-hidden>
+          <circle className="ring-bg" cx="50" cy="50" r={R} />
+          <circle
+            className="ring-fg"
+            cx="50"
+            cy="50"
+            r={R}
+            strokeDasharray={CIRC}
+            strokeDashoffset={offset}
+          />
+        </svg>
+        <div className="ring-pct">
+          <div className="ring-num">
+            {spinning ? (
+              '—'
+            ) : (
+              <>
+                {pct}
+                <span className="ring-unit">%</span>
+              </>
+            )}
+          </div>
+          <div className="ring-lbl">{spinning ? '进行中' : '已完成'}</div>
+        </div>
+      </div>
+      <div className="phase">{label ?? '处理中'}</div>
+      {detail && <div className="phase-sub">{detail}</div>}
+    </div>
+  )
+}
+
+/* -------------------------------- 步骤条 -------------------------------- */
+
+/**
+ * 三步流程指示器。`current` 为 0 基索引：之前的标 done，当前标 cur。
+ */
+export function Steps({ items, current }: { items: string[]; current: number }) {
+  return (
+    <div className="steps">
+      {items.map((label, i) => (
+        <Fragment key={label}>
+          {i > 0 && <span className="step-line" aria-hidden />}
+          <span className={`step${i < current ? ' done' : i === current ? ' cur' : ''}`}>
+            <span className="dot">{i < current ? <IconCheck size={11} /> : i + 1}</span>
+            {label}
+          </span>
+        </Fragment>
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------ 完成态卡片 ------------------------------ */
+
+/**
+ * 导入/导出共用的完成态：大对勾 + 统计网格 + 底部动作。
+ * 抽成独立组件是为了能被测试直接渲染（面板里的终态是条件渲染，覆盖不到）。
+ */
+export function CompletionCard({
+  title,
+  subtitle,
+  stats,
+  actions,
+  note,
+  children,
+}: {
+  title: ReactNode
+  subtitle?: ReactNode
+  stats: { v: ReactNode; k: ReactNode }[]
+  actions?: ReactNode
+  note?: ReactNode
+  children?: ReactNode
+}) {
+  return (
+    <>
+      <div className="success-wrap">
+        <div className="success-ring">
+          <IconCheck size={38} />
+        </div>
+        <h2>{title}</h2>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+
+      {stats.length > 0 && (
+        <div className="stat-grid">
+          {stats.map((s, i) => (
+            <div className="stat" key={i}>
+              <div className="v">{s.v}</div>
+              <div className="k">{s.k}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {children}
+
+      {actions && <div className="done-actions">{actions}</div>}
+      {note && <div className="note-line">{note}</div>}
+    </>
   )
 }
 

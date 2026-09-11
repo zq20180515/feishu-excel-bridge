@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import MappingEditor from './MappingEditor'
-import { Card, Notice, Progress, Tip } from './ui'
-import { IconImage, IconInfo, IconTable, IconUpload } from './icons'
+import { Card, CompletionCard, Notice, RingProgress, Steps, Tip } from './ui'
+import { IconImage, IconInfo, IconRetry, IconSheetImage, IconTable, IconUpload } from './icons'
 import { listFields } from '../lib/base-api'
 import { parseWorkbookFile } from '../lib/excel-read'
 import { IMPORTABLE_FILE_TYPES, IMPORT_ACCEPT } from '../lib/field-meta'
@@ -129,110 +129,140 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
   const enabledCols = liveSheets.reduce((n, s) => n + s.columns.filter((c) => c.enabled).length, 0)
   const liveTableCount = liveSheets.filter((s) => s.columns.some((c) => c.enabled)).length
 
+  /**
+   * 步骤条：选文件 → 字段映射 → 导入。
+   * 传入 items.length（=3）表示「三步全部完成」，此时不会再有 cur 高亮。
+   */
+  const stepIndex = result ? 3 : parsed ? (busy ? 2 : 1) : 0
+
+  /** 回到空态，方便连续导入多份文件 */
+  const resetImport = () => {
+    setParsed(null)
+    setResult(null)
+    setError('')
+    setLogs([])
+    setProgress(null)
+    lastFile.current = null
+  }
+
   return (
     <>
-      <Card
-        title="选择表格文件"
-        hint="支持 Excel 全系列与 CSV；带图片的格式才需要 .xlsx/.xlsm"
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept={IMPORT_ACCEPT}
-          style={{ display: 'none' }}
-          onChange={onPick}
-        />
-        <div
-          className={`dropzone${over ? ' over' : ''}${parsed ? ' compact' : ''}`}
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault()
-            setOver(true)
-          }}
-          onDragLeave={() => setOver(false)}
-          onDrop={onDrop}
-        >
-          <span className="dz-icon">
-            <IconUpload size={parsed ? 18 : 26} />
-          </span>
-          <span className="dz-main">{parsed ? parsed.fileName : '拖入表格文件，或点击选择'}</span>
-          <span className="dz-sub">
-            {parsed
-              ? `${liveSheets.length} 个工作表${
-                  blankSheets.length > 0 ? `（跳过 ${blankSheets.length} 个空白）` : ''
-                } · ${totalRows} 行 · 识别附件 ${totalMedia} 个 · 点击可换文件`
-              : '图片列会自动转成「附件」字段'}
-          </span>
-        </div>
+      <Steps items={['选文件', '字段映射', '导入']} current={stepIndex} />
 
-        {/* 支持的文件类型一览 —— 只在还没选文件时展示，给映射区留空间 */}
+      <Card flush>
+        {/* 未选文件时：hero 空态（给侧栏一个明确的「从这里开始」） */}
         {!parsed && (
-          <>
-            <div className="row wrap" style={{ marginTop: 10, gap: 6 }}>
-              {IMPORTABLE_FILE_TYPES.map((t) => (
-                <Tip
-                  key={t.ext}
-                  text={`${t.label}（.${t.ext}）— ${t.note}`}
-                >
-                  <span className={`ftype${t.zip ? ' rich' : ''}`}>.{t.ext}</span>
-                </Tip>
-              ))}
+          <div className="hero">
+            <div className="hero-art">
+              <IconSheetImage size={34} />
             </div>
-            <Notice>
-              常用格式都能直接拖入。<b>.xlsx / .xlsm / .xltx / .xltm / .xlam</b> 是 zip 容器，图片能被解析成附件字段；
-              其余格式（<b>.xls / .xlsb / .ods / .csv / .txt</b>）只能读取单元格文本，图片列会是空的 —— 需要图片请先用 WPS / Excel 另存为 .xlsx。
-            </Notice>
-          </>
+            <h2>把 Excel 搬进多维表格</h2>
+            <p>
+              图片列自动转成「附件」字段
+              <br />
+              表头、多选、多工作表原样保留
+            </p>
+          </div>
         )}
 
-        <div className="row wrap" style={{ marginTop: 12 }}>
-          <label className="check">
-            <span>表头在第</span>
-            <input
-              className="input size-input"
-              inputMode="numeric"
-              value={headerRow}
-              onChange={(e) => setHeaderRow(Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 1))}
-            />
-            <span className="muted">行</span>
-          </label>
-          <button
-            className="btn ghost xs"
-            disabled={!lastFile.current || busy}
-            onClick={() => lastFile.current && void handleFile(lastFile.current, headerRow)}
+        <div className="card-pad">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={IMPORT_ACCEPT}
+            style={{ display: 'none' }}
+            onChange={onPick}
+          />
+          <div
+            className={`dropzone${over ? ' over' : ''}${parsed ? ' compact' : ''}`}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setOver(true)
+            }}
+            onDragLeave={() => setOver(false)}
+            onDrop={onDrop}
           >
-            重新解析
-          </button>
-          <button className="btn ghost xs" style={{ marginLeft: 'auto' }} onClick={() => setShowOptions((v) => !v)}>
-            {showOptions ? '收起导入选项' : '导入选项'}
-          </button>
-        </div>
+            <span className="dz-icon">
+              <IconUpload size={parsed ? 17 : 20} />
+            </span>
+            <span className="dz-main">{parsed ? parsed.fileName : '拖入表格文件，或点击选择'}</span>
+            <span className="dz-sub">
+              {parsed
+                ? `${liveSheets.length} 个工作表${
+                    blankSheets.length > 0 ? `（跳过 ${blankSheets.length} 个空白）` : ''
+                  } · ${totalRows} 行 · 识别附件 ${totalMedia} 个 · 点击可换文件`
+                : '支持一次拖入一个文件 · 图片列会自动转成「附件」字段'}
+            </span>
+          </div>
 
-        {showOptions && (
-          <div className="opt-panel">
+          {/* 支持的文件类型一览 —— 只在还没选文件时展示，给映射区留空间 */}
+          {!parsed && (
+            <>
+              <div className="row wrap" style={{ marginTop: 10, gap: 6 }}>
+                {IMPORTABLE_FILE_TYPES.map((t) => (
+                  <Tip key={t.ext} text={`${t.label}（.${t.ext}）— ${t.note}`}>
+                    <span className={`ftype${t.zip ? ' rich' : ''}`}>.{t.ext}</span>
+                  </Tip>
+                ))}
+              </div>
+              <Notice>
+                常用格式都能直接拖入。<b>.xlsx / .xlsm / .xltx / .xltm / .xlam</b> 是 zip 容器，图片能被解析成附件字段；
+                其余格式（<b>.xls / .xlsb / .ods / .csv / .txt</b>）只能读取单元格文本，图片列会是空的 ——
+                需要图片请先用 WPS / Excel 另存为 .xlsx。
+              </Notice>
+            </>
+          )}
+
+          <div className="row wrap" style={{ marginTop: 12 }}>
             <label className="check">
-              <input type="checkbox" checked={skipEmptyRows} onChange={(e) => setSkipEmptyRows(e.target.checked)} />
-              <span>跳过整行空白的数据行</span>
-            </label>
-            <label className="check">
-              <span>附件每批上传</span>
+              <span>表头在第</span>
               <input
                 className="input size-input"
                 inputMode="numeric"
-                value={uploadBatchSize}
-                onChange={(e) =>
-                  setUploadBatchSize(Math.min(50, Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 10)))
-                }
+                value={headerRow}
+                onChange={(e) => setHeaderRow(Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 1))}
               />
-              <span className="muted">个</span>
-              <Tip text="多维表格的上传接口不支持并发调用，这里会按批次串行上传，批次越大越省往返次数。">
-                <span className="help-dot">
-                  <IconInfo size={12} />
-                </span>
-              </Tip>
+              <span className="muted">行</span>
             </label>
+            <button
+              className="btn ghost xs"
+              disabled={!lastFile.current || busy}
+              onClick={() => lastFile.current && void handleFile(lastFile.current, headerRow)}
+            >
+              重新解析
+            </button>
+            <button className="btn ghost xs" style={{ marginLeft: 'auto' }} onClick={() => setShowOptions((v) => !v)}>
+              {showOptions ? '收起导入选项' : '导入选项'}
+            </button>
           </div>
-        )}
+
+          {showOptions && (
+            <div className="opt-panel">
+              <label className="check">
+                <input type="checkbox" checked={skipEmptyRows} onChange={(e) => setSkipEmptyRows(e.target.checked)} />
+                <span>跳过整行空白的数据行</span>
+              </label>
+              <label className="check">
+                <span>附件每批上传</span>
+                <input
+                  className="input size-input"
+                  inputMode="numeric"
+                  value={uploadBatchSize}
+                  onChange={(e) =>
+                    setUploadBatchSize(Math.min(50, Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 10)))
+                  }
+                />
+                <span className="muted">个</span>
+                <Tip text="多维表格的上传接口不支持并发调用，这里会按批次串行上传，批次越大越省往返次数。">
+                  <span className="help-dot">
+                    <IconInfo size={12} />
+                  </span>
+                </Tip>
+              </label>
+            </div>
+          )}
+        </div>
       </Card>
 
       {error && <Notice kind="err">{error}</Notice>}
@@ -285,7 +315,7 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
       {(progress || logs.length > 0) && (
         <Card title="执行进度">
           {progress && (
-            <Progress
+            <RingProgress
               tone="import"
               done={progress.done}
               total={progress.total}
@@ -298,41 +328,65 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
       )}
 
       {result && (
-        <Card title="导入结果">
-          {result.tables.length > 0 && (
-            <div className="result-list" style={{ marginBottom: 12 }}>
-              {result.tables.map((t, i) => (
-                <div className="result-item" key={i}>
-                  <span className="result-name" title={`${t.sheet} → ${t.tableName}`}>
-                    {t.tableName}
-                  </span>
-                  <span className="muted">新建 {t.createdFields} 字段</span>
-                  <span className="muted">复用 {t.reusedFields}</span>
-                  <span className="badge ok">{t.records} 条</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {result.warnings.map((w, i) => (
-            <Notice kind="warn" key={`w${i}`}>
-              {w}
-            </Notice>
-          ))}
-          {result.errors.length > 0 && (
-            <>
-              <div className="log-title">跳过的内容（{result.errors.length} 条，最多显示 100 条）</div>
-              <div className="log">
-                {result.errors
-                  .slice(0, 100)
-                  .map((e) => `${e.sheet}${e.row > 0 ? ` 第${e.row}行` : ''} · ${e.column} → ${e.message}`)
-                  .join('\n')}
+        <Card>
+          <CompletionCard
+            title="导入完成"
+            subtitle={
+              result.tables.length > 0
+                ? `${result.tables.length} 张数据表已写入当前多维表格`
+                : '没有写入任何数据表，请检查下方提示'
+            }
+            stats={[
+              { v: liveTableCount, k: '数据表' },
+              { v: enabledCols, k: '字段' },
+              { v: totalRows, k: '行记录' },
+              { v: totalMedia, k: '附件图片' },
+            ]}
+            actions={
+              <button className="btn primary" onClick={resetImport}>
+                <IconRetry size={14} />
+                再导入一个
+              </button>
+            }
+            note="同名数据表已自动加序号，可在左侧数据表列表查看"
+          >
+            {result.tables.length > 0 && (
+              <div className="result-list" style={{ marginTop: 14 }}>
+                {result.tables.map((t, i) => (
+                  <div className="result-item" key={i}>
+                    <span className="result-name" title={`${t.sheet} → ${t.tableName}`}>
+                      {t.tableName}
+                    </span>
+                    <span className="muted">新建 {t.createdFields} 字段</span>
+                    <span className="muted">复用 {t.reusedFields}</span>
+                    <span className="badge ok">{t.records} 条</span>
+                  </div>
+                ))}
               </div>
-            </>
-          )}
+            )}
+
+            {result.warnings.map((w, i) => (
+              <Notice kind="warn" key={`w${i}`}>
+                {w}
+              </Notice>
+            ))}
+
+            {result.errors.length > 0 && (
+              <>
+                <div className="log-title">跳过的内容（{result.errors.length} 条，最多显示 100 条）</div>
+                <div className="log">
+                  {result.errors
+                    .slice(0, 100)
+                    .map((e) => `${e.sheet}${e.row > 0 ? ` 第${e.row}行` : ''} · ${e.column} → ${e.message}`)
+                    .join('\n')}
+                </div>
+              </>
+            )}
+          </CompletionCard>
         </Card>
       )}
 
-      {parsed && liveSheets.length > 0 && (
+      {parsed && liveSheets.length > 0 && !result && (
         <div className="footer-bar">
           <span className="muted">
             将导入 {liveTableCount} 张数据表 · {enabledCols} 个字段 · {totalRows} 行数据

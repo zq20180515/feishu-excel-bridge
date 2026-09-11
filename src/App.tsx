@@ -4,7 +4,7 @@ import ExportPanel from './components/ExportPanel'
 import { listTables, sdkAvailable } from './lib/base-api'
 import type { TableBrief } from './lib/types'
 import { Notice, Popover } from './components/ui'
-import { IconCheck, IconDownload, IconFeedback, IconSparkle, IconUpload } from './components/icons'
+import { IconCheck, IconDownload, IconFeedback, IconSheetImage, IconUpload } from './components/icons'
 
 const APP_NAME = 'BTNExcel 桥'
 const APP_TAGLINE = '原样导入 / 带图导出'
@@ -170,14 +170,14 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">
-            <IconSparkle size={15} />
+            <IconSheetImage size={19} />
           </span>
           <span className="brand-text">
             <span className="brand-main">
               <span className="brand-name">{APP_NAME}</span>
               <FeedbackEntry />
             </span>
-            <span className="brand-sub">原样导入 / 带图导出</span>
+            <span className="brand-sub">{APP_TAGLINE}</span>
           </span>
         </div>
         <div className="segmented tabs" role="tablist">

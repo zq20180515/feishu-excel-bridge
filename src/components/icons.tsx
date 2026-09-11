@@ -150,3 +150,26 @@ export function IconFeedback({ size = 16, className }: P) {
     </svg>
   )
 }
+
+/** 带图片的表格 —— 首页 hero 用，点出「把图片搬进表格」这件事 */
+export function IconSheetImage({ size = 34, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="2.5" y="3.5" width="19" height="17" rx="2.5" />
+      <path d="M2.5 9.5h19M9.5 9.5v11" />
+      <circle cx="15" cy="12.6" r="1.4" />
+      <path d="m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9" />
+    </svg>
+  )
+}
+
+/** 循环箭头 —— 用于「再导入一个 / 再次导出」 */
+export function IconRetry({ size = 16, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M3.5 12a8.5 8.5 0 0 1 14.5-6" />
+      <path d="M20.5 12a8.5 8.5 0 0 1-14.5 6" />
+      <path d="M18 3v3.5h-3.5M6 21v-3.5h3.5" />
+    </svg>
+  )
+}

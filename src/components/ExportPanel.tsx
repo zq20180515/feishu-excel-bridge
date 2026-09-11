@@ -1,6 +1,13 @@
 import { useState } from 'react'
-import { Card, Notice, Progress, Segmented, Tip } from './ui'
-import { IconDownload, IconFolder, IconImage, IconInfo, IconRefresh, IconTable } from './icons'
+import { Card, CompletionCard, Notice, RingProgress, Segmented, Tip } from './ui'
+import {
+  IconDownload,
+  IconFolder,
+  IconImage,
+  IconInfo,
+  IconRefresh,
+  IconTable,
+} from './icons'
 import { revealExportFile, runExport, triggerDownload } from '../lib/exporter'
 import type { ExportProgress, ExportResult } from '../lib/exporter'
 import type { TableBrief } from '../lib/types'
@@ -47,6 +54,11 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
   const allOn = tables.length > 0 && selected.size === tables.length
 
   const parsedSize = Number(imageSize.replace(/\D/g, '')) || 0
+
+  /** 完成态统计 */
+  const totalImages = result?.summary.reduce((n, s) => n + s.images, 0) ?? 0
+  const totalRecords = result?.summary.reduce((n, s) => n + s.records, 0) ?? 0
+  const sizeMb = result ? (result.blob.size / 1024 / 1024).toFixed(1) : '0'
 
   const doExport = async () => {
     if (!selected.size) return
@@ -276,7 +288,7 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
 
       {(progress || busy) && (
         <Card title="导出进度" hint={progress?.phase ? undefined : '正在准备导出…'}>
-          <Progress
+          <RingProgress
             tone="export"
             indeterminate={!progress}
             done={progress?.done ?? 0}
@@ -290,62 +302,81 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
       {error && <Notice kind="err">{error}</Notice>}
 
       {result && (
-        <Card title="导出完成" hint={result.fileName}>
-          <div className="result-list">
-            {result.summary.map((s, i) => (
-              <div className="result-item" key={i}>
-                <span className="result-name" title={s.table}>
-                  {s.table}
-                </span>
-                <span className="muted">{s.records} 条记录</span>
-                <span className="badge acc">
-                  <IconImage size={11} />
-                  {s.images}
-                </span>
-              </div>
+        <Card>
+          <CompletionCard
+            title="导出完成"
+            subtitle={result.fileName}
+            stats={[
+              { v: result.summary.length, k: '工作表' },
+              { v: totalImages, k: '嵌入图片' },
+              { v: totalRecords, k: '行记录' },
+              { v: sizeMb, k: 'MB 文件' },
+            ]}
+            actions={
+              <>
+                <button className="btn ghost" onClick={() => triggerDownload(result.blob, result.fileName)}>
+                  <IconDownload size={14} />
+                  再下载一次
+                </button>
+                <button className="btn primary" onClick={() => void doReveal()} disabled={locating}>
+                  <IconFolder size={14} />
+                  {locating ? '正在定位…' : '打开文件位置'}
+                </button>
+              </>
+            }
+            note={
+              embedImages
+                ? imageMode === 'dispimg'
+                  ? '图片以 WPS 嵌入方式写入，用 WPS 打开可见'
+                  : '图片以标准浮动方式写入，Excel / WPS 都能显示'
+                : '未嵌入图片，仅导出文件名文本'
+            }
+          >
+            <div className="result-list" style={{ marginTop: 14 }}>
+              {result.summary.map((s, i) => (
+                <div className="result-item" key={i}>
+                  <span className="result-name" title={s.table}>
+                    {s.table}
+                  </span>
+                  <span className="muted">{s.records} 条记录</span>
+                  <span className="badge acc">
+                    <IconImage size={11} />
+                    {s.images}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {result.warnings.map((w, i) => (
+              <Notice kind="warn" key={`w${i}`}>
+                {w}
+              </Notice>
             ))}
-          </div>
-          {result.warnings.map((w, i) => (
-            <Notice kind="warn" key={`w${i}`}>
-              {w}
-            </Notice>
-          ))}
-          {result.errors.length > 0 && <div className="log">{result.errors.slice(0, 50).join('\n')}</div>}
-          <div className="row wrap" style={{ marginTop: 12, gap: 8 }}>
-            <button className="btn ghost sm" onClick={() => triggerDownload(result.blob, result.fileName)}>
-              <IconDownload size={13} />
-              再下载一次
-            </button>
-            <button className="btn ghost sm" onClick={() => void doReveal()} disabled={locating}>
-              <IconFolder size={13} />
-              {locating ? '正在定位…' : '打开文件所在位置'}
-            </button>
-          </div>
-          {revealMsg && (
-            <Notice kind={revealMsg.kind}>
-              {revealMsg.text}
-            </Notice>
-          )}
+            {result.errors.length > 0 && <div className="log">{result.errors.slice(0, 50).join('\n')}</div>}
+            {revealMsg && <Notice kind={revealMsg.kind}>{revealMsg.text}</Notice>}
+          </CompletionCard>
         </Card>
       )}
 
-      <div className="footer-bar">
-        <span className="muted">
-          已选 {selected.size} 张数据表
-          {embedImages
-            ? ` · ${imageMode === 'dispimg' ? 'WPS 嵌入单元格图片' : '标准浮动图片'}${allImages ? ' · 全部图片分列' : ''}`
-            : ' · 不嵌入图片'}
-        </span>
-        <button
-          className="btn primary"
-          style={{ marginLeft: 'auto' }}
-          disabled={busy || selected.size === 0}
-          onClick={() => void doExport()}
-        >
-          <IconDownload size={14} />
-          {busy ? '导出中…' : '导出并下载'}
-        </button>
-      </div>
+      {!result && (
+        <div className="footer-bar">
+          <span className="muted">
+            已选 {selected.size} 张数据表
+            {embedImages
+              ? ` · ${imageMode === 'dispimg' ? 'WPS 嵌入单元格图片' : '标准浮动图片'}${allImages ? ' · 全部图片分列' : ''}`
+              : ' · 不嵌入图片'}
+          </span>
+          <button
+            className="btn primary"
+            style={{ marginLeft: 'auto' }}
+            disabled={busy || selected.size === 0}
+            onClick={() => void doExport()}
+          >
+            <IconDownload size={14} />
+            {busy ? '导出中…' : '导出并下载'}
+          </button>
+        </div>
+      )}
     </>
   )
 }

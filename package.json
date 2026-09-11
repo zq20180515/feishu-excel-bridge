@@ -8,9 +8,11 @@
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "test": "npm run test:roundtrip && npm run test:render",
+    "test": "npm run test:roundtrip && npm run test:render && npm run test:ui",
     "test:roundtrip": "esbuild test/roundtrip.ts --bundle --platform=node --format=cjs --target=node20 --outfile=test/roundtrip.cjs && node test/roundtrip.cjs",
     "test:render": "esbuild test/render.ts --bundle --platform=node --format=cjs --target=node20 --outfile=test/render.cjs && node test/render.cjs",
+    "test:ui": "esbuild test/ui.ts --bundle --platform=node --format=cjs --target=node20 --alias:@lark-base-open/js-sdk=./test/stub-sdk.ts --outfile=test/ui.cjs && node test/ui.cjs",
+    "preview:ui": "esbuild test/preview.ts --bundle --platform=node --format=cjs --target=node20 --alias:@lark-base-open/js-sdk=./test/stub-sdk.ts --outfile=test/preview.cjs && node test/preview.cjs",
     "test:compare": "node test/compare-wps.py",
     "make:samples": "esbuild test/make-samples.ts --bundle --platform=node --format=cjs --target=node20 --outfile=test/make-samples.cjs && node test/make-samples.cjs"
   },
