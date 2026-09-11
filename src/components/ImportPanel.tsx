@@ -408,7 +408,17 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
                   }
                 />
                 <span className="muted">个</span>
-                <Tip text="多维表格的上传接口不支持并发调用，这里会按批次串行上传，批次越大越省往返次数。">
+                <Tip
+                  text={
+                    <>
+                      多维表格的上传接口 <b>禁止并发调用</b>，这里会按批次串行上传。
+                      <br />
+                      批次越大，往返次数越少、总耗时越短；但单批一旦失败要走逐个兜底，代价也更高。
+                      <br />
+                      附件很多（几百个）时建议调到 <b>20–30</b>。
+                    </>
+                  }
+                >
                   <span className="help-dot">
                     <IconInfo size={12} />
                   </span>

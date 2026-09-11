@@ -230,6 +230,44 @@ export async function getAttachmentUrls(table: AnyTable, tokens: string[], field
  */
 let uploadChain: Promise<unknown> = Promise.resolve()
 
+/**
+ * 单批 / 单文件上传的超时上限（毫秒）。
+ *
+ * ⚠️ 这个保护是必须的：飞书的上传接口在个别文件上会**既不返回也不报错**地挂住，
+ * 而 `await` 会一直等下去 —— 表现就是导入卡在某个数字上再也不会动
+ * （实测 439 个附件卡在第 210 个，即第 22 批）。
+ * 超时后把该文件记为失败并继续，总比整个导入永久卡死强。
+ */
+const UPLOAD_TIMEOUT_MS = 90_000
+/** 批量失败降级为逐个上传时用更短的超时（此时已知这批有问题，不必再等那么久） */
+const UPLOAD_ONE_TIMEOUT_MS = 45_000
+
+/** 给 Promise 套一层超时；超时抛出可读错误，交由上层记为失败并继续 */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      reject(new Error(`${label}超时（${Math.round(ms / 1000)} 秒无响应）`))
+    }, ms)
+    p.then(
+      (v) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(v)
+      },
+      (e) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        reject(e)
+      },
+    )
+  })
+}
+
 export type UploadOutcome = {
   tokens: (string | null)[]
   failures: { index: number; name: string; message: string }[]
@@ -238,43 +276,67 @@ export type UploadOutcome = {
 export function uploadFilesSerial(
   files: File[],
   batchSize = 10,
-  onProgress?: (done: number, total: number) => void,
+  onProgress?: (done: number, total: number, current?: string) => void,
+  opts?: { timeoutMs?: number; shouldStop?: () => boolean },
 ): Promise<UploadOutcome> {
+  const timeoutMs = opts?.timeoutMs ?? UPLOAD_TIMEOUT_MS
+  // 显式传入 timeoutMs 时（例如测试）单个上传也用它，避免等待时间被下面的常量拉长
+  const oneTimeoutMs = opts?.timeoutMs
+    ? Math.min(opts.timeoutMs, UPLOAD_ONE_TIMEOUT_MS)
+    : UPLOAD_ONE_TIMEOUT_MS
   const run = async (): Promise<UploadOutcome> => {
     const tokens: (string | null)[] = new Array(files.length).fill(null)
     const failures: UploadOutcome['failures'] = []
     let done = 0
     const size = Math.max(1, batchSize)
 
-    for (let i = 0; i < files.length; i += size) {
-      const slice = files.slice(i, i + size)
+    /** 单文件兜底上传：批量没返回这个文件的 token 时走这里，顺便把「哪张图有问题」定位出来 */
+    const uploadOne = async (idx: number): Promise<void> => {
+      const f = files[idx]
+      // 先报「正在传哪个」，卡住时用户也能看到是哪个文件
+      onProgress?.(done, files.length, f.name)
       try {
-        const res = await (bitable.base as any).batchUploadFile(slice)
+        const res = await withTimeout(
+          (bitable.base as any).batchUploadFile([f]),
+          oneTimeoutMs,
+          `附件「${f.name}」`,
+        )
+        const t = Array.isArray(res) ? res[0] : undefined
+        if (t) tokens[idx] = t
+        else failures.push({ index: idx, name: f.name, message: '上传未返回 token' })
+      } catch (err) {
+        failures.push({ index: idx, name: f.name, message: String((err as Error)?.message ?? err) })
+      }
+      done++
+    }
+
+    for (let i = 0; i < files.length; i += size) {
+      if (opts?.shouldStop?.()) break
+      const slice = files.slice(i, i + size)
+
+      try {
+        const res = await withTimeout(
+          (bitable.base as any).batchUploadFile(slice),
+          timeoutMs,
+          `第 ${i + 1}–${i + slice.length} 个附件批量上传`,
+        )
         const list: string[] = Array.isArray(res) ? res : []
         slice.forEach((f, k) => {
           if (list[k]) tokens[i + k] = list[k]
         })
-        slice.forEach((f, k) => {
-          if (!tokens[i + k]) {
-            // 数量对不上，逐个补
-          }
-        })
-      } catch (e) {
-        // 降级：逐个上传
-        for (let k = 0; k < slice.length; k++) {
-          const f = slice[k]
-          try {
-            const res = await (bitable.base as any).batchUploadFile([f])
-            const t = Array.isArray(res) ? res[0] : undefined
-            if (t) tokens[i + k] = t
-            else failures.push({ index: i + k, name: f.name, message: '上传未返回 token' })
-          } catch (err) {
-            failures.push({ index: i + k, name: f.name, message: String((err as Error)?.message ?? err) })
-          }
-        }
-        void e
+      } catch {
+        // 整批失败（含超时）：不在这里记失败，交给下面的逐个兜底去定位到具体文件
       }
-      done += slice.length
+
+      for (let k = 0; k < slice.length; k++) {
+        const idx = i + k
+        if (tokens[idx]) {
+          done++
+          continue
+        }
+        if (opts?.shouldStop?.()) break
+        await uploadOne(idx)
+      }
       onProgress?.(done, files.length)
     }
     return { tokens, failures }

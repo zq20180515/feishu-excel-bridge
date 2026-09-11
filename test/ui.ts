@@ -379,6 +379,57 @@ async function main() {
   ok(!!host.querySelector('.tk-btn'), '字段类型仍是可点击胶囊 .tk-btn')
   ok(!/每个工作表单独成表/.test(html), '已移除「每个工作表单独成表…」的说明文案')
 
+  /* ============ 9. 附件上传：超时保护与逐个兜底 ============ */
+  console.log('\n=== 9. 附件上传的容错 ===')
+  const { uploadFilesSerial } = await import('../src/lib/base-api')
+  const { stubState, resetUploadStub } = await import('./stub-sdk')
+
+  const mkFiles = (n: number) =>
+    Array.from(
+      { length: n },
+      (_x, i) => new File([new Uint8Array([i])], `p${i}.jpg`, { type: 'image/jpeg' }),
+    )
+
+  // ① 正常路径：整批一次调用就够
+  resetUploadStub()
+  let upOut = await uploadFilesSerial(mkFiles(4), 4)
+  ok(upOut.failures.length === 0, '正常情况无失败项')
+  ok(upOut.tokens.length === 4 && upOut.tokens.every(Boolean), '每个文件都拿到 token')
+  ok(stubState.calls.length === 1, '整批一次调用完成', { calls: stubState.calls })
+
+  // ② 批量返回不全 → 必须逐个兜底（修复前这里是个空循环，会静默丢文件）
+  resetUploadStub()
+  stubState.mode = 'partial'
+  upOut = await uploadFilesSerial(mkFiles(3), 3)
+  ok(stubState.calls.length === 4, '批量拿不到 token 时会逐个补传', { calls: stubState.calls })
+  ok(upOut.failures.length === 3, '逐个也失败时全部记为失败（不再静默丢弃）', {
+    n: upOut.failures.length,
+  })
+  ok(
+    /未返回 token/.test(upOut.failures[0]?.message ?? ''),
+    '失败原因可读',
+    { msg: upOut.failures[0]?.message },
+  )
+
+  // ③ 接口挂起 → 必须被超时兜住，绝不能永久等待（真机上 439 个附件卡在第 210 个就是栽在这）
+  resetUploadStub()
+  stubState.mode = 'hang'
+  const t0 = Date.now()
+  upOut = await uploadFilesSerial(mkFiles(2), 2, undefined, { timeoutMs: 80 })
+  const cost = Date.now() - t0
+  ok(cost < 3000, `接口挂起时靠超时退出（耗时 ${cost}ms，理论上限 160ms）`, { cost })
+  ok(upOut.failures.length === 2, '挂起的附件记为失败后继续', { n: upOut.failures.length })
+  ok(/超时/.test(upOut.failures[0]?.message ?? ''), '失败信息里写明是超时', {
+    msg: upOut.failures[0]?.message,
+  })
+  ok(upOut.tokens.every((t) => t === null), '超时的文件 token 保持空（上层据此跳过该单元格）')
+
+  // ④ 取消：shouldStop 为真时不发起任何上传
+  resetUploadStub()
+  upOut = await uploadFilesSerial(mkFiles(10), 2, undefined, { shouldStop: () => true })
+  ok(stubState.calls.length === 0, 'shouldStop 为真时不发起任何上传', { calls: stubState.calls.length })
+  ok(upOut.tokens.every((t) => t === null), '中断时全部文件保持空 token')
+
   console.log(`\n${failed === 0 ? '真实组件渲染校验全部通过 ✅' : `失败 ${failed} 项 ❌`}`)
   process.exit(failed === 0 ? 0 : 1)
 }

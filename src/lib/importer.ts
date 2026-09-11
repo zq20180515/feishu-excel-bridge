@@ -142,7 +142,15 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
     const { tokens, failures } = await uploadFilesSerial(
       tasks.map((t) => t.file),
       opts.uploadBatchSize,
-      (done, total) => report('media', '正在上传附件图片', done, total, `第 ${done} / ${total} 个`),
+      (done, total, current) =>
+        report(
+          'media',
+          '正在上传附件图片',
+          done,
+          total,
+          current ? `正在上传 ${current}` : `第 ${done} / ${total} 个`,
+        ),
+      { shouldStop: opts.shouldStop },
     )
     tasks.forEach((t, i) => {
       const token = tokens[i]
