@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Card, CompletionCard, Notice, RingProgress, Segmented, Tip } from './ui'
+import type { ProgressStageDef } from './ui'
 import {
   IconDownload,
   IconFolder,
@@ -38,7 +39,7 @@ const PACK_TIP: Record<PackMode, string> = {
 }
 
 /** 阶段清单（与 exporter.ts 的 ExportStage 对应） */
-const EXPORT_STAGES = [
+const EXPORT_STAGES: ProgressStageDef[] = [
   { key: 'read', label: '读取数据表' },
   { key: 'fetch', label: '拉取字段与记录' },
   { key: 'media', label: '下载附件图片' },
@@ -84,6 +85,18 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
   const totalImages = result?.summary.reduce((n, s) => n + s.images, 0) ?? 0
   const totalRecords = result?.summary.reduce((n, s) => n + s.records, 0) ?? 0
   const sizeMb = result ? (result.blob.size / 1024 / 1024).toFixed(1) : '0'
+
+  /** 阶段清单：给「下载附件图片」挂上每张图的明细，可展开查看 */
+  const stages: ProgressStageDef[] = EXPORT_STAGES.map((s) => {
+    if (s.key !== 'media') return s
+    const onMedia = progress?.stage === 'media'
+    return {
+      ...s,
+      summary:
+        onMedia && progress && progress.total > 1 ? `${progress.done} / ${progress.total}` : undefined,
+      items: onMedia ? progress?.items : undefined,
+    }
+  })
 
   const doExport = async () => {
     if (!selected.size) return
@@ -149,7 +162,7 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
           label={progress?.phase ?? '正在准备'}
           detail={progress?.detail}
           ringCaption="已导出"
-          stages={EXPORT_STAGES}
+          stages={stages}
           currentStage={progress?.stage}
         />
         <div className="footer-bar">

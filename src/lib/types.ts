@@ -75,6 +75,16 @@ export type ParsedFile = {
   warnings: string[]
 }
 
+/**
+ * 进度明细里的一条。
+ * 导入/导出共用的最小结构：`label` + 状态 + 右侧补充信息。
+ */
+export type StageItem = {
+  label: string
+  meta?: string
+  state: 'done' | 'active' | 'fail' | 'pending'
+}
+
 export function cellKey(row: number, col: number): string {
   return `${row}::${col}`
 }

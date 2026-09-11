@@ -856,25 +856,146 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
+/* 阶段清单：每行是一个可展开的按钮，展开后显示该阶段的明细 */
 .stage-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 16px auto 0;
   text-align: left;
+}
+
+.stage-block {
+  min-width: 0;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 2px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-family: inherit;
   font-size: 12.5px;
   color: var(--text-3);
+  text-align: left;
   white-space: nowrap;
+}
+
+.stage.expandable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.stage.expandable:hover {
+  background: var(--surface-3);
+}
+
+.stage:disabled {
+  cursor: default;
+}
+
+.stage-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 展开箭头 */
+.stage-caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4.5px solid var(--text-4);
+  transition: transform 0.16s;
+}
+
+.stage-caret.open {
+  transform: rotate(180deg);
+}
+
+/* 明细列表：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */
+.stage-items {
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+
+.stage-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage-items::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+.sitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.sitem-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.sitem-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sitem-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sitem.done {
+  color: var(--text-2);
+}
+.sitem.done .sitem-dot {
+  background: var(--accent);
+}
+
+.sitem.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.sitem.active .sitem-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sitem.fail {
+  color: var(--err);
+}
+.sitem.fail .sitem-dot {
+  background: var(--err);
 }
 
 .stage .sic {
@@ -917,8 +1038,9 @@ body {
   border: 1.5px solid var(--line-strong);
 }
 
-/* 进行中阶段的进度后缀，如（62 / 91） */
+/* 进行中阶段的进度后缀，如 62 / 91 */
 .stage-num {
+  flex: none;
   color: var(--accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -2013,6 +2135,15 @@ select.input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 底部栏右侧的动作组（复制日志 / 取消 等） */
+.footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
 }
 
 /* ------------------------------ 滚动条微调 ------------------------------ */
@@ -3212,25 +3343,146 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
+/* 阶段清单：每行是一个可展开的按钮，展开后显示该阶段的明细 */
 .stage-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 16px auto 0;
   text-align: left;
+}
+
+.stage-block {
+  min-width: 0;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 2px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-family: inherit;
   font-size: 12.5px;
   color: var(--text-3);
+  text-align: left;
   white-space: nowrap;
+}
+
+.stage.expandable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.stage.expandable:hover {
+  background: var(--surface-3);
+}
+
+.stage:disabled {
+  cursor: default;
+}
+
+.stage-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 展开箭头 */
+.stage-caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4.5px solid var(--text-4);
+  transition: transform 0.16s;
+}
+
+.stage-caret.open {
+  transform: rotate(180deg);
+}
+
+/* 明细列表：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */
+.stage-items {
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+
+.stage-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage-items::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+.sitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.sitem-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.sitem-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sitem-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sitem.done {
+  color: var(--text-2);
+}
+.sitem.done .sitem-dot {
+  background: var(--accent);
+}
+
+.sitem.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.sitem.active .sitem-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sitem.fail {
+  color: var(--err);
+}
+.sitem.fail .sitem-dot {
+  background: var(--err);
 }
 
 .stage .sic {
@@ -3273,8 +3525,9 @@ body {
   border: 1.5px solid var(--line-strong);
 }
 
-/* 进行中阶段的进度后缀，如（62 / 91） */
+/* 进行中阶段的进度后缀，如 62 / 91 */
 .stage-num {
+  flex: none;
   color: var(--accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -4371,6 +4624,15 @@ select.input {
   white-space: nowrap;
 }
 
+/* 底部栏右侧的动作组（复制日志 / 取消 等） */
+.footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -4769,9 +5031,9 @@ select.input {
     <section class="pv">
       <header class="pv-h">
         <h2>③ 导入 · 进行中</h2>
-        <p>环形进度 + 阶段清单（完成打勾 / 进行中转圈 / 未开始空心圈）</p>
+        <p>环形进度 + 可展开的阶段明细（点开看每张图传到哪了）</p>
       </header>
-      <iframe class="pv-f" width="400" height="760" srcdoc="<!doctype html><html lang=&quot;zh-CN&quot;><head><meta charset=&quot;utf-8&quot;><style>/* ==========================================================================
+      <iframe class="pv-f" width="400" height="900" srcdoc="<!doctype html><html lang=&quot;zh-CN&quot;><head><meta charset=&quot;utf-8&quot;><style>/* ==========================================================================
    BTNExcel 桥 · 设计令牌
    现代工具风：白卡 + 大圆角 + 极轻阴影，teal 作强调色，主按钮用近黑
    ========================================================================== */
@@ -5568,25 +5830,146 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
+/* 阶段清单：每行是一个可展开的按钮，展开后显示该阶段的明细 */
 .stage-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 16px auto 0;
   text-align: left;
+}
+
+.stage-block {
+  min-width: 0;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 2px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-family: inherit;
   font-size: 12.5px;
   color: var(--text-3);
+  text-align: left;
   white-space: nowrap;
+}
+
+.stage.expandable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.stage.expandable:hover {
+  background: var(--surface-3);
+}
+
+.stage:disabled {
+  cursor: default;
+}
+
+.stage-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 展开箭头 */
+.stage-caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4.5px solid var(--text-4);
+  transition: transform 0.16s;
+}
+
+.stage-caret.open {
+  transform: rotate(180deg);
+}
+
+/* 明细列表：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */
+.stage-items {
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+
+.stage-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage-items::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+.sitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.sitem-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.sitem-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sitem-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sitem.done {
+  color: var(--text-2);
+}
+.sitem.done .sitem-dot {
+  background: var(--accent);
+}
+
+.sitem.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.sitem.active .sitem-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sitem.fail {
+  color: var(--err);
+}
+.sitem.fail .sitem-dot {
+  background: var(--err);
 }
 
 .stage .sic {
@@ -5629,8 +6012,9 @@ body {
   border: 1.5px solid var(--line-strong);
 }
 
-/* 进行中阶段的进度后缀，如（62 / 91） */
+/* 进行中阶段的进度后缀，如 62 / 91 */
 .stage-num {
+  flex: none;
   color: var(--accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -6727,6 +7111,15 @@ select.input {
   white-space: nowrap;
 }
 
+/* 底部栏右侧的动作组（复制日志 / 取消 等） */
+.footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -7119,7 +7512,7 @@ select.input {
     grid-template-columns: 1fr;
   }
 }
-</style></head><body><div class=&quot;app&quot;><span style=&quot;display:contents&quot;><header class=&quot;topbar&quot;><div class=&quot;brand&quot;><span class=&quot;brand-mark&quot;><svg width=&quot;19&quot; height=&quot;19&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;2.5&quot; y=&quot;3.5&quot; width=&quot;19&quot; height=&quot;17&quot; rx=&quot;2.5&quot;></rect><path d=&quot;M2.5 9.5h19M9.5 9.5v11&quot;></path><circle cx=&quot;15&quot; cy=&quot;12.6&quot; r=&quot;1.4&quot;></circle><path d=&quot;m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9&quot;></path></svg></span><span class=&quot;brand-text&quot;><span class=&quot;brand-main&quot;><span class=&quot;brand-name&quot;>BTNExcel 桥</span><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;brand-feedback&quot; title=&quot;遇到问题？点这里反馈&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20.5 12.4a7.6 7.6 0 0 1-8.2 7.6 8.6 8.6 0 0 1-2.4-.4L4.5 21l1.4-4.3a8 8 0 0 1-.9-3.6 7.4 7.4 0 0 1 6.3-7.3 7.7 7.7 0 0 1 9.2 6.6Z&quot;></path><path d=&quot;M9.4 11.6h5.2M9.4 14.6h3.4&quot;></path></svg>反馈</button></span></span><span class=&quot;brand-sub&quot;>原样导入 / 带图导出</span></span></div><div class=&quot;segmented tabs&quot; role=&quot;tablist&quot;><button role=&quot;tab&quot; aria-selected=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 16V4&quot;></path><path d=&quot;m7 9 5-5 5 5&quot;></path><path d=&quot;M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V17&quot;></path></svg></span><span class=&quot;seg-label&quot;>导入 Excel</span></button><button role=&quot;tab&quot; aria-selected=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg></span><span class=&quot;seg-label&quot;>导出为 Excel</span></button></div></header></span><main class=&quot;body&quot;><div class=&quot;stack&quot;><div class=&quot;steps&quot;><span class=&quot;step done&quot;><span class=&quot;dot&quot;><svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span>选文件</span><span class=&quot;step-line&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;step done&quot;><span class=&quot;dot&quot;><svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span>字段映射</span><span class=&quot;step-line&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;step cur&quot;><span class=&quot;dot&quot;>3</span>导入</span></div><div class=&quot;progress-card prog-import&quot;><div class=&quot;ring-wrap&quot; role=&quot;progressbar&quot; aria-valuenow=&quot;68&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot; aria-valuetext=&quot;68%&quot;><svg width=&quot;118&quot; height=&quot;118&quot; viewBox=&quot;0 0 100 100&quot; aria-hidden=&quot;true&quot;><circle class=&quot;ring-bg&quot; cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;42&quot;></circle><circle class=&quot;ring-fg&quot; cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;42&quot; stroke-dasharray=&quot;263.89378290154264&quot; stroke-dashoffset=&quot;84.44601052849363&quot;></circle></svg><div class=&quot;ring-pct&quot;><div class=&quot;ring-num&quot;>68<span class=&quot;ring-unit&quot;>%</span></div><div class=&quot;ring-lbl&quot;>已写入</div></div></div><div class=&quot;phase&quot;>正在写入记录</div><div class=&quot;phase-sub&quot;>员工档案 · 第 62 / 91 行</div><div class=&quot;stage-list&quot;><div class=&quot;stage done&quot;><span class=&quot;sic&quot;><svg width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span><span>解析工作表与表头</span></div><div class=&quot;stage done&quot;><span class=&quot;sic&quot;><svg width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span><span>上传附件图片</span></div><div class=&quot;stage done&quot;><span class=&quot;sic&quot;><svg width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span><span>创建数据表与字段</span></div><div class=&quot;stage active&quot;><span class=&quot;sic&quot;><span class=&quot;spin&quot;></span></span><span>写入记录</span><span class=&quot;stage-num&quot;>（62 / 91）</span></div></div></div></div></main></div></body></html>" loading="lazy"></iframe>
+</style></head><body><div class=&quot;app&quot;><span style=&quot;display:contents&quot;><header class=&quot;topbar&quot;><div class=&quot;brand&quot;><span class=&quot;brand-mark&quot;><svg width=&quot;19&quot; height=&quot;19&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;2.5&quot; y=&quot;3.5&quot; width=&quot;19&quot; height=&quot;17&quot; rx=&quot;2.5&quot;></rect><path d=&quot;M2.5 9.5h19M9.5 9.5v11&quot;></path><circle cx=&quot;15&quot; cy=&quot;12.6&quot; r=&quot;1.4&quot;></circle><path d=&quot;m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9&quot;></path></svg></span><span class=&quot;brand-text&quot;><span class=&quot;brand-main&quot;><span class=&quot;brand-name&quot;>BTNExcel 桥</span><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;brand-feedback&quot; title=&quot;遇到问题？点这里反馈&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20.5 12.4a7.6 7.6 0 0 1-8.2 7.6 8.6 8.6 0 0 1-2.4-.4L4.5 21l1.4-4.3a8 8 0 0 1-.9-3.6 7.4 7.4 0 0 1 6.3-7.3 7.7 7.7 0 0 1 9.2 6.6Z&quot;></path><path d=&quot;M9.4 11.6h5.2M9.4 14.6h3.4&quot;></path></svg>反馈</button></span></span><span class=&quot;brand-sub&quot;>原样导入 / 带图导出</span></span></div><div class=&quot;segmented tabs&quot; role=&quot;tablist&quot;><button role=&quot;tab&quot; aria-selected=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 16V4&quot;></path><path d=&quot;m7 9 5-5 5 5&quot;></path><path d=&quot;M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V17&quot;></path></svg></span><span class=&quot;seg-label&quot;>导入 Excel</span></button><button role=&quot;tab&quot; aria-selected=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg></span><span class=&quot;seg-label&quot;>导出为 Excel</span></button></div></header></span><main class=&quot;body&quot;><div class=&quot;stack&quot;><div class=&quot;steps&quot;><span class=&quot;step done&quot;><span class=&quot;dot&quot;><svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span>选文件</span><span class=&quot;step-line&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;step done&quot;><span class=&quot;dot&quot;><svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span>字段映射</span><span class=&quot;step-line&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;step cur&quot;><span class=&quot;dot&quot;>3</span>导入</span></div><div class=&quot;progress-card prog-import&quot;><div class=&quot;ring-wrap&quot; role=&quot;progressbar&quot; aria-valuenow=&quot;48&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot; aria-valuetext=&quot;48%&quot;><svg width=&quot;118&quot; height=&quot;118&quot; viewBox=&quot;0 0 100 100&quot; aria-hidden=&quot;true&quot;><circle class=&quot;ring-bg&quot; cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;42&quot;></circle><circle class=&quot;ring-fg&quot; cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;42&quot; stroke-dasharray=&quot;263.89378290154264&quot; stroke-dashoffset=&quot;137.22476710880218&quot;></circle></svg><div class=&quot;ring-pct&quot;><div class=&quot;ring-num&quot;>48<span class=&quot;ring-unit&quot;>%</span></div><div class=&quot;ring-lbl&quot;>已写入</div></div></div><div class=&quot;phase&quot;>正在上传附件图片</div><div class=&quot;phase-sub&quot;>YJWJ宝箱计数_页面_03.jpg（2.1 MB）</div><div class=&quot;stage-list&quot;><div class=&quot;stage-block&quot;><button type=&quot;button&quot; class=&quot;stage done&quot; disabled=&quot;&quot;><span class=&quot;sic&quot;><svg width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span><span class=&quot;stage-label&quot;>解析工作表与表头</span></button></div><div class=&quot;stage-block&quot;><button type=&quot;button&quot; class=&quot;stage active expandable&quot; aria-expanded=&quot;true&quot;><span class=&quot;sic&quot;><span class=&quot;spin&quot;></span></span><span class=&quot;stage-label&quot;>上传附件图片</span><span class=&quot;stage-num&quot;>210 / 439</span><span class=&quot;stage-caret open&quot; aria-hidden=&quot;true&quot;></span></button><div class=&quot;stage-items&quot;><div class=&quot;sitem done&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;投诉现场_01.jpg&quot;>投诉现场_01.jpg</span><span class=&quot;sitem-meta&quot;>1.2 MB · 0.8s</span></div><div class=&quot;sitem done&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;投诉现场_02.jpg&quot;>投诉现场_02.jpg</span><span class=&quot;sitem-meta&quot;>860 KB · 0.5s</span></div><div class=&quot;sitem done&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;投诉现场_03.jpg&quot;>投诉现场_03.jpg</span><span class=&quot;sitem-meta&quot;>2.0 MB · 1.4s</span></div><div class=&quot;sitem done&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;包装破损_01.jpg&quot;>包装破损_01.jpg</span><span class=&quot;sitem-meta&quot;>3.1 MB · 6.2s</span></div><div class=&quot;sitem active&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;YJWJ宝箱计数_页面_03.jpg&quot;>YJWJ宝箱计数_页面_03.jpg</span><span class=&quot;sitem-meta&quot;>2.1 MB</span></div><div class=&quot;sitem pending&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;仓库全景_07.jpg&quot;>仓库全景_07.jpg</span><span class=&quot;sitem-meta&quot;>4.4 MB</span></div><div class=&quot;sitem pending&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;破损留证_02.jpg&quot;>破损留证_02.jpg</span><span class=&quot;sitem-meta&quot;>1.8 MB</span></div><div class=&quot;sitem fail&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;IMG_2231.png&quot;>IMG_2231.png</span><span class=&quot;sitem-meta&quot;>920 KB · 超时</span></div></div></div><div class=&quot;stage-block&quot;><button type=&quot;button&quot; class=&quot;stage&quot; disabled=&quot;&quot;><span class=&quot;sic&quot;><span class=&quot;hollow&quot;></span></span><span class=&quot;stage-label&quot;>创建数据表与字段</span></button></div><div class=&quot;stage-block&quot;><button type=&quot;button&quot; class=&quot;stage&quot; disabled=&quot;&quot;><span class=&quot;sic&quot;><span class=&quot;hollow&quot;></span></span><span class=&quot;stage-label&quot;>写入记录</span></button></div></div></div></div></main></div></body></html>" loading="lazy"></iframe>
     </section>
 
     <section class="pv">
@@ -7924,25 +8317,146 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
+/* 阶段清单：每行是一个可展开的按钮，展开后显示该阶段的明细 */
 .stage-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 16px auto 0;
   text-align: left;
+}
+
+.stage-block {
+  min-width: 0;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 2px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-family: inherit;
   font-size: 12.5px;
   color: var(--text-3);
+  text-align: left;
   white-space: nowrap;
+}
+
+.stage.expandable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.stage.expandable:hover {
+  background: var(--surface-3);
+}
+
+.stage:disabled {
+  cursor: default;
+}
+
+.stage-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 展开箭头 */
+.stage-caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4.5px solid var(--text-4);
+  transition: transform 0.16s;
+}
+
+.stage-caret.open {
+  transform: rotate(180deg);
+}
+
+/* 明细列表：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */
+.stage-items {
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+
+.stage-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage-items::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+.sitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.sitem-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.sitem-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sitem-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sitem.done {
+  color: var(--text-2);
+}
+.sitem.done .sitem-dot {
+  background: var(--accent);
+}
+
+.sitem.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.sitem.active .sitem-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sitem.fail {
+  color: var(--err);
+}
+.sitem.fail .sitem-dot {
+  background: var(--err);
 }
 
 .stage .sic {
@@ -7985,8 +8499,9 @@ body {
   border: 1.5px solid var(--line-strong);
 }
 
-/* 进行中阶段的进度后缀，如（62 / 91） */
+/* 进行中阶段的进度后缀，如 62 / 91 */
 .stage-num {
+  flex: none;
   color: var(--accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -9081,6 +9596,15 @@ select.input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 底部栏右侧的动作组（复制日志 / 取消 等） */
+.footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
 }
 
 /* ------------------------------ 滚动条微调 ------------------------------ */
@@ -10280,25 +10804,146 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
+/* 阶段清单：每行是一个可展开的按钮，展开后显示该阶段的明细 */
 .stage-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 16px auto 0;
   text-align: left;
+}
+
+.stage-block {
+  min-width: 0;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 2px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-family: inherit;
   font-size: 12.5px;
   color: var(--text-3);
+  text-align: left;
   white-space: nowrap;
+}
+
+.stage.expandable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.stage.expandable:hover {
+  background: var(--surface-3);
+}
+
+.stage:disabled {
+  cursor: default;
+}
+
+.stage-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 展开箭头 */
+.stage-caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4.5px solid var(--text-4);
+  transition: transform 0.16s;
+}
+
+.stage-caret.open {
+  transform: rotate(180deg);
+}
+
+/* 明细列表：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */
+.stage-items {
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+
+.stage-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage-items::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+.sitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.sitem-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.sitem-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sitem-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sitem.done {
+  color: var(--text-2);
+}
+.sitem.done .sitem-dot {
+  background: var(--accent);
+}
+
+.sitem.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.sitem.active .sitem-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sitem.fail {
+  color: var(--err);
+}
+.sitem.fail .sitem-dot {
+  background: var(--err);
 }
 
 .stage .sic {
@@ -10341,8 +10986,9 @@ body {
   border: 1.5px solid var(--line-strong);
 }
 
-/* 进行中阶段的进度后缀，如（62 / 91） */
+/* 进行中阶段的进度后缀，如 62 / 91 */
 .stage-num {
+  flex: none;
   color: var(--accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -11439,6 +12085,15 @@ select.input {
   white-space: nowrap;
 }
 
+/* 底部栏右侧的动作组（复制日志 / 取消 等） */
+.footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -11837,9 +12492,9 @@ select.input {
     <section class="pv">
       <header class="pv-h">
         <h2>⑥ 导出 · 进行中</h2>
-        <p>环形进度（导出配色为蓝）+ 四个阶段</p>
+        <p>环形进度（导出配色为蓝）+ 可展开的图片下载明细</p>
       </header>
-      <iframe class="pv-f" width="400" height="760" srcdoc="<!doctype html><html lang=&quot;zh-CN&quot;><head><meta charset=&quot;utf-8&quot;><style>/* ==========================================================================
+      <iframe class="pv-f" width="400" height="980" srcdoc="<!doctype html><html lang=&quot;zh-CN&quot;><head><meta charset=&quot;utf-8&quot;><style>/* ==========================================================================
    BTNExcel 桥 · 设计令牌
    现代工具风：白卡 + 大圆角 + 极轻阴影，teal 作强调色，主按钮用近黑
    ========================================================================== */
@@ -12636,25 +13291,146 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
+/* 阶段清单：每行是一个可展开的按钮，展开后显示该阶段的明细 */
 .stage-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 16px auto 0;
   text-align: left;
+}
+
+.stage-block {
+  min-width: 0;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 2px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-family: inherit;
   font-size: 12.5px;
   color: var(--text-3);
+  text-align: left;
   white-space: nowrap;
+}
+
+.stage.expandable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.stage.expandable:hover {
+  background: var(--surface-3);
+}
+
+.stage:disabled {
+  cursor: default;
+}
+
+.stage-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 展开箭头 */
+.stage-caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4.5px solid var(--text-4);
+  transition: transform 0.16s;
+}
+
+.stage-caret.open {
+  transform: rotate(180deg);
+}
+
+/* 明细列表：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */
+.stage-items {
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+
+.stage-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage-items::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+.sitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.sitem-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.sitem-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sitem-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sitem.done {
+  color: var(--text-2);
+}
+.sitem.done .sitem-dot {
+  background: var(--accent);
+}
+
+.sitem.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.sitem.active .sitem-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sitem.fail {
+  color: var(--err);
+}
+.sitem.fail .sitem-dot {
+  background: var(--err);
 }
 
 .stage .sic {
@@ -12697,8 +13473,9 @@ body {
   border: 1.5px solid var(--line-strong);
 }
 
-/* 进行中阶段的进度后缀，如（62 / 91） */
+/* 进行中阶段的进度后缀，如 62 / 91 */
 .stage-num {
+  flex: none;
   color: var(--accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -13795,6 +14572,15 @@ select.input {
   white-space: nowrap;
 }
 
+/* 底部栏右侧的动作组（复制日志 / 取消 等） */
+.footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
 /* ------------------------------ 滚动条微调 ------------------------------ */
 
 .log::-webkit-scrollbar,
@@ -14187,7 +14973,7 @@ select.input {
     grid-template-columns: 1fr;
   }
 }
-</style></head><body><div class=&quot;app&quot;><span style=&quot;display:contents&quot;><header class=&quot;topbar&quot;><div class=&quot;brand&quot;><span class=&quot;brand-mark&quot;><svg width=&quot;19&quot; height=&quot;19&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;2.5&quot; y=&quot;3.5&quot; width=&quot;19&quot; height=&quot;17&quot; rx=&quot;2.5&quot;></rect><path d=&quot;M2.5 9.5h19M9.5 9.5v11&quot;></path><circle cx=&quot;15&quot; cy=&quot;12.6&quot; r=&quot;1.4&quot;></circle><path d=&quot;m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9&quot;></path></svg></span><span class=&quot;brand-text&quot;><span class=&quot;brand-main&quot;><span class=&quot;brand-name&quot;>BTNExcel 桥</span><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;brand-feedback&quot; title=&quot;遇到问题？点这里反馈&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20.5 12.4a7.6 7.6 0 0 1-8.2 7.6 8.6 8.6 0 0 1-2.4-.4L4.5 21l1.4-4.3a8 8 0 0 1-.9-3.6 7.4 7.4 0 0 1 6.3-7.3 7.7 7.7 0 0 1 9.2 6.6Z&quot;></path><path d=&quot;M9.4 11.6h5.2M9.4 14.6h3.4&quot;></path></svg>反馈</button></span></span><span class=&quot;brand-sub&quot;>原样导入 / 带图导出</span></span></div><div class=&quot;segmented tabs&quot; role=&quot;tablist&quot;><button role=&quot;tab&quot; aria-selected=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 16V4&quot;></path><path d=&quot;m7 9 5-5 5 5&quot;></path><path d=&quot;M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V17&quot;></path></svg></span><span class=&quot;seg-label&quot;>导入 Excel</span></button><button role=&quot;tab&quot; aria-selected=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg></span><span class=&quot;seg-label&quot;>导出为 Excel</span></button></div></header></span><main class=&quot;body&quot;><div class=&quot;stack&quot;><div class=&quot;progress-card prog-export&quot;><div class=&quot;ring-wrap&quot; role=&quot;progressbar&quot; aria-valuenow=&quot;46&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot; aria-valuetext=&quot;46%&quot;><svg width=&quot;118&quot; height=&quot;118&quot; viewBox=&quot;0 0 100 100&quot; aria-hidden=&quot;true&quot;><circle class=&quot;ring-bg&quot; cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;42&quot;></circle><circle class=&quot;ring-fg&quot; cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;42&quot; stroke-dasharray=&quot;263.89378290154264&quot; stroke-dashoffset=&quot;142.50264276683302&quot;></circle></svg><div class=&quot;ring-pct&quot;><div class=&quot;ring-num&quot;>46<span class=&quot;ring-unit&quot;>%</span></div><div class=&quot;ring-lbl&quot;>已导出</div></div></div><div class=&quot;phase&quot;>正在下载附件图片</div><div class=&quot;phase-sub&quot;>办公用品申请表 · 第 12 / 26 张图片</div><div class=&quot;stage-list&quot;><div class=&quot;stage done&quot;><span class=&quot;sic&quot;><svg width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span><span>读取数据表</span></div><div class=&quot;stage done&quot;><span class=&quot;sic&quot;><svg width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span><span>拉取字段与记录</span></div><div class=&quot;stage active&quot;><span class=&quot;sic&quot;><span class=&quot;spin&quot;></span></span><span>下载附件图片</span><span class=&quot;stage-num&quot;>（12 / 26）</span></div><div class=&quot;stage&quot;><span class=&quot;sic&quot;><span class=&quot;hollow&quot;></span></span><span>嵌入图片并生成 Excel</span></div></div></div></div></main></div></body></html>" loading="lazy"></iframe>
+</style></head><body><div class=&quot;app&quot;><span style=&quot;display:contents&quot;><header class=&quot;topbar&quot;><div class=&quot;brand&quot;><span class=&quot;brand-mark&quot;><svg width=&quot;19&quot; height=&quot;19&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;2.5&quot; y=&quot;3.5&quot; width=&quot;19&quot; height=&quot;17&quot; rx=&quot;2.5&quot;></rect><path d=&quot;M2.5 9.5h19M9.5 9.5v11&quot;></path><circle cx=&quot;15&quot; cy=&quot;12.6&quot; r=&quot;1.4&quot;></circle><path d=&quot;m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9&quot;></path></svg></span><span class=&quot;brand-text&quot;><span class=&quot;brand-main&quot;><span class=&quot;brand-name&quot;>BTNExcel 桥</span><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;brand-feedback&quot; title=&quot;遇到问题？点这里反馈&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20.5 12.4a7.6 7.6 0 0 1-8.2 7.6 8.6 8.6 0 0 1-2.4-.4L4.5 21l1.4-4.3a8 8 0 0 1-.9-3.6 7.4 7.4 0 0 1 6.3-7.3 7.7 7.7 0 0 1 9.2 6.6Z&quot;></path><path d=&quot;M9.4 11.6h5.2M9.4 14.6h3.4&quot;></path></svg>反馈</button></span></span><span class=&quot;brand-sub&quot;>原样导入 / 带图导出</span></span></div><div class=&quot;segmented tabs&quot; role=&quot;tablist&quot;><button role=&quot;tab&quot; aria-selected=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 16V4&quot;></path><path d=&quot;m7 9 5-5 5 5&quot;></path><path d=&quot;M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V17&quot;></path></svg></span><span class=&quot;seg-label&quot;>导入 Excel</span></button><button role=&quot;tab&quot; aria-selected=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg></span><span class=&quot;seg-label&quot;>导出为 Excel</span></button></div></header></span><main class=&quot;body&quot;><div class=&quot;stack&quot;><div class=&quot;progress-card prog-export&quot;><div class=&quot;ring-wrap&quot; role=&quot;progressbar&quot; aria-valuenow=&quot;46&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot; aria-valuetext=&quot;46%&quot;><svg width=&quot;118&quot; height=&quot;118&quot; viewBox=&quot;0 0 100 100&quot; aria-hidden=&quot;true&quot;><circle class=&quot;ring-bg&quot; cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;42&quot;></circle><circle class=&quot;ring-fg&quot; cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;42&quot; stroke-dasharray=&quot;263.89378290154264&quot; stroke-dashoffset=&quot;142.50264276683302&quot;></circle></svg><div class=&quot;ring-pct&quot;><div class=&quot;ring-num&quot;>46<span class=&quot;ring-unit&quot;>%</span></div><div class=&quot;ring-lbl&quot;>已导出</div></div></div><div class=&quot;phase&quot;>下载附件图片</div><div class=&quot;phase-sub&quot;>办公用品申请表 · 第 12 / 26 张</div><div class=&quot;stage-list&quot;><div class=&quot;stage-block&quot;><button type=&quot;button&quot; class=&quot;stage done&quot; disabled=&quot;&quot;><span class=&quot;sic&quot;><svg width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span><span class=&quot;stage-label&quot;>读取数据表</span></button></div><div class=&quot;stage-block&quot;><button type=&quot;button&quot; class=&quot;stage done&quot; disabled=&quot;&quot;><span class=&quot;sic&quot;><svg width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span><span class=&quot;stage-label&quot;>拉取字段与记录</span></button></div><div class=&quot;stage-block&quot;><button type=&quot;button&quot; class=&quot;stage active expandable&quot; aria-expanded=&quot;true&quot;><span class=&quot;sic&quot;><span class=&quot;spin&quot;></span></span><span class=&quot;stage-label&quot;>下载附件图片</span><span class=&quot;stage-num&quot;>12 / 26</span><span class=&quot;stage-caret open&quot; aria-hidden=&quot;true&quot;></span></button><div class=&quot;stage-items&quot;><div class=&quot;sitem done&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;申请单_扫描件01.png&quot;>申请单_扫描件01.png</span><span class=&quot;sitem-meta&quot;>1.1 MB</span></div><div class=&quot;sitem done&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;申请单_扫描件02.png&quot;>申请单_扫描件02.png</span><span class=&quot;sitem-meta&quot;>980 KB</span></div><div class=&quot;sitem active&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;办公用品明细.png&quot;>办公用品明细.png</span><span class=&quot;sitem-meta&quot;>2.3 MB</span></div><div class=&quot;sitem pending&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;签收单.png&quot;>签收单.png</span><span class=&quot;sitem-meta&quot;>640 KB</span></div><div class=&quot;sitem fail&quot;><span class=&quot;sitem-dot&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;sitem-label&quot; title=&quot;发票照片.jpg&quot;>发票照片.jpg</span><span class=&quot;sitem-meta&quot;>1.5 MB</span></div></div></div><div class=&quot;stage-block&quot;><button type=&quot;button&quot; class=&quot;stage&quot; disabled=&quot;&quot;><span class=&quot;sic&quot;><span class=&quot;hollow&quot;></span></span><span class=&quot;stage-label&quot;>嵌入图片并生成 Excel</span></button></div></div></div></div></main></div></body></html>" loading="lazy"></iframe>
     </section>
 
     <section class="pv">
@@ -14992,25 +15778,146 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
+/* 阶段清单：每行是一个可展开的按钮，展开后显示该阶段的明细 */
 .stage-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 16px auto 0;
   text-align: left;
+}
+
+.stage-block {
+  min-width: 0;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 2px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-family: inherit;
   font-size: 12.5px;
   color: var(--text-3);
+  text-align: left;
   white-space: nowrap;
+}
+
+.stage.expandable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.stage.expandable:hover {
+  background: var(--surface-3);
+}
+
+.stage:disabled {
+  cursor: default;
+}
+
+.stage-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 展开箭头 */
+.stage-caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4.5px solid var(--text-4);
+  transition: transform 0.16s;
+}
+
+.stage-caret.open {
+  transform: rotate(180deg);
+}
+
+/* 明细列表：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */
+.stage-items {
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+
+.stage-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage-items::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+.sitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.sitem-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.sitem-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sitem-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sitem.done {
+  color: var(--text-2);
+}
+.sitem.done .sitem-dot {
+  background: var(--accent);
+}
+
+.sitem.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.sitem.active .sitem-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sitem.fail {
+  color: var(--err);
+}
+.sitem.fail .sitem-dot {
+  background: var(--err);
 }
 
 .stage .sic {
@@ -15053,8 +15960,9 @@ body {
   border: 1.5px solid var(--line-strong);
 }
 
-/* 进行中阶段的进度后缀，如（62 / 91） */
+/* 进行中阶段的进度后缀，如 62 / 91 */
 .stage-num {
+  flex: none;
   color: var(--accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -16149,6 +17057,15 @@ select.input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 底部栏右侧的动作组（复制日志 / 取消 等） */
+.footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
 }
 
 /* ------------------------------ 滚动条微调 ------------------------------ */

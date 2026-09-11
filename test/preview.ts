@@ -165,26 +165,42 @@ views.push(
 views.push(
   frame(
     '③ 导入 · 进行中',
-    '环形进度 + 阶段清单（完成打勾 / 进行中转圈 / 未开始空心圈）',
+    '环形进度 + 可展开的阶段明细（点开看每张图传到哪了）',
     panelShell(
       body(
         createElement(Steps, { items: ['选文件', '字段映射', '导入'], current: 2 }),
         createElement(RingProgress, {
-          done: 62,
-          total: 91,
-          label: '正在写入记录',
-          detail: '员工档案 · 第 62 / 91 行',
+          done: 210,
+          total: 439,
+          label: '正在上传附件图片',
+          detail: 'YJWJ宝箱计数_页面_03.jpg（2.1 MB）',
           ringCaption: '已写入',
           stages: [
             { key: 'parse', label: '解析工作表与表头' },
-            { key: 'media', label: '上传附件图片' },
+            {
+              key: 'media',
+              label: '上传附件图片',
+              summary: '210 / 439',
+              items: [
+                { label: '投诉现场_01.jpg', meta: '1.2 MB · 0.8s', state: 'done' },
+                { label: '投诉现场_02.jpg', meta: '860 KB · 0.5s', state: 'done' },
+                { label: '投诉现场_03.jpg', meta: '2.0 MB · 1.4s', state: 'done' },
+                { label: '包装破损_01.jpg', meta: '3.1 MB · 6.2s', state: 'done' },
+                { label: 'YJWJ宝箱计数_页面_03.jpg', meta: '2.1 MB', state: 'active' },
+                { label: '仓库全景_07.jpg', meta: '4.4 MB', state: 'pending' },
+                { label: '破损留证_02.jpg', meta: '1.8 MB', state: 'pending' },
+                { label: 'IMG_2231.png', meta: '920 KB · 超时', state: 'fail' },
+              ],
+            },
             { key: 'fields', label: '创建数据表与字段' },
             { key: 'records', label: '写入记录' },
           ],
-          currentStage: 'records',
+          currentStage: 'media',
+          initialOpenStage: 'media',
         }),
       ),
     ),
+    900,
   ),
 )
 
@@ -247,26 +263,39 @@ views.push(
 views.push(
   frame(
     '⑥ 导出 · 进行中',
-    '环形进度（导出配色为蓝）+ 四个阶段',
+    '环形进度（导出配色为蓝）+ 可展开的图片下载明细',
     panelShell(
       body(
         createElement(RingProgress, {
           tone: 'export',
           done: 12,
           total: 26,
-          label: '正在下载附件图片',
-          detail: '办公用品申请表 · 第 12 / 26 张图片',
+          label: '下载附件图片',
+          detail: '办公用品申请表 · 第 12 / 26 张',
           ringCaption: '已导出',
           stages: [
             { key: 'read', label: '读取数据表' },
             { key: 'fetch', label: '拉取字段与记录' },
-            { key: 'media', label: '下载附件图片' },
+            {
+              key: 'media',
+              label: '下载附件图片',
+              summary: '12 / 26',
+              items: [
+                { label: '申请单_扫描件01.png', meta: '1.1 MB', state: 'done' },
+                { label: '申请单_扫描件02.png', meta: '980 KB', state: 'done' },
+                { label: '办公用品明细.png', meta: '2.3 MB', state: 'active' },
+                { label: '签收单.png', meta: '640 KB', state: 'pending' },
+                { label: '发票照片.jpg', meta: '1.5 MB', state: 'fail' },
+              ],
+            },
             { key: 'pack', label: '嵌入图片并生成 Excel' },
           ],
           currentStage: 'media',
+          initialOpenStage: 'media',
         }),
       ),
     ),
+    980,
   ),
 )
 

@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { IconCheck, IconError, IconInfo, IconWarn } from './icons'
+import type { StageItem } from '../lib/types'
 
 /* ------------------------------- 小工具 ------------------------------- */
 
@@ -143,7 +144,17 @@ export function Progress({
 
 /* ---------------------------- 环形进度（重设计） ---------------------------- */
 
-export type ProgressStageDef = { key: string; label: string }
+/* 明细条目的类型定义在 lib/types.ts（导入/导出都要用），这里转出去方便组件侧引用 */
+export type { StageItem }
+
+export type ProgressStageDef = {
+  key: string
+  label: string
+  /** 未展开时右侧的摘要，如「210 / 439」 */
+  summary?: string
+  /** 可展开查看的明细列表 */
+  items?: StageItem[]
+}
 
 /**
  * 环形进度卡：用于导入/导出的主进度展示。
@@ -161,6 +172,7 @@ export function RingProgress({
   ringCaption,
   stages,
   currentStage,
+  initialOpenStage,
 }: {
   done: number
   total: number
@@ -174,7 +186,12 @@ export function RingProgress({
   stages?: ProgressStageDef[]
   /** 当前进行到的阶段 key */
   currentStage?: string
+  /** 初始就展开哪个阶段的明细（不传则全部收起） */
+  initialOpenStage?: string
 }) {
+  /** 当前展开了哪个阶段的明细（同时只展开一个，避免列表把侧栏撑得太长） */
+  const [openStage, setOpenStage] = useState<string | null>(initialOpenStage ?? null)
+
   const safeTotal = Math.max(1, total)
   const pct = Math.max(0, Math.min(100, Math.round((done / safeTotal) * 100)))
   const spinning = !!indeterminate || pct === 0
@@ -229,22 +246,50 @@ export function RingProgress({
         <div className="stage-list">
           {stages.map((s, i) => {
             const state = activeIdx < 0 ? '' : i < activeIdx ? 'done' : i === activeIdx ? 'active' : ''
+            const items = s.items ?? []
+            const expandable = items.length > 0
+            const isOpen = openStage === s.key
+            const summary =
+              s.summary ?? (state === 'active' && total > 1 ? `${done} / ${total}` : '')
+
             return (
-              <div className={state ? `stage ${state}` : 'stage'} key={s.key}>
-                <span className="sic">
-                  {state === 'done' ? (
-                    <IconCheck size={16} />
-                  ) : state === 'active' ? (
-                    <span className="spin" />
-                  ) : (
-                    <span className="hollow" />
-                  )}
-                </span>
-                <span>{s.label}</span>
-                {state === 'active' && total > 1 && (
-                  <span className="stage-num">
-                    （{done} / {total}）
+              <div className="stage-block" key={s.key}>
+                <button
+                  type="button"
+                  className={`stage${state ? ' ' + state : ''}${expandable ? ' expandable' : ''}`}
+                  aria-expanded={expandable ? isOpen : undefined}
+                  disabled={!expandable}
+                  onClick={() => expandable && setOpenStage(isOpen ? null : s.key)}
+                >
+                  <span className="sic">
+                    {state === 'done' ? (
+                      <IconCheck size={16} />
+                    ) : state === 'active' ? (
+                      <span className="spin" />
+                    ) : (
+                      <span className="hollow" />
+                    )}
                   </span>
+                  <span className="stage-label">{s.label}</span>
+                  {summary && <span className="stage-num">{summary}</span>}
+                  {expandable && (
+                    <span className={isOpen ? 'stage-caret open' : 'stage-caret'} aria-hidden />
+                  )}
+                </button>
+
+                {/* 明细：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */}
+                {isOpen && expandable && (
+                  <div className="stage-items">
+                    {items.map((it, k) => (
+                      <div className={`sitem ${it.state}`} key={`${it.label}-${k}`}>
+                        <span className="sitem-dot" aria-hidden />
+                        <span className="sitem-label" title={it.label}>
+                          {it.label}
+                        </span>
+                        {it.meta && <span className="sitem-meta">{it.meta}</span>}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )

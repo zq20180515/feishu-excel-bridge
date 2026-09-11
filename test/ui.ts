@@ -264,6 +264,63 @@ async function main() {
   })
   ok(!document.getElementById('r4')!.querySelector('.stage-list'), '不传 stages 时不渲染清单')
 
+  /* ---- 阶段明细可展开（上传/下载时查看每一条的进度） ---- */
+  await act(async () => {
+    root.render(
+      createElement('div', { id: 'r5' },
+        createElement(RingProgress, {
+          done: 2,
+          total: 4,
+          label: '正在上传附件图片',
+          ringCaption: '已写入',
+          stages: [
+            { key: 'parse', label: '解析工作表与表头' },
+            {
+              key: 'media',
+              label: '上传附件图片',
+              summary: '2 / 4',
+              items: [
+                { label: 'a.jpg', meta: '1.2 MB', state: 'done' },
+                { label: 'b.jpg', meta: '800 KB', state: 'active' },
+                { label: 'c.jpg', meta: '2.0 MB', state: 'pending' },
+                { label: 'd.jpg', meta: '3.1 MB', state: 'fail' },
+              ],
+            },
+            { key: 'records', label: '写入记录' },
+          ],
+          currentStage: 'media',
+        })),
+    )
+  })
+  const r5 = document.getElementById('r5')!
+  ok(!!r5.querySelector('.stage-block'), '阶段用 .stage-block 包裹')
+  const mediaBtn = [...r5.querySelectorAll('.stage')].find((el) =>
+    /上传附件图片/.test(el.textContent ?? ''),
+  ) as (Element & { click: () => void; disabled: boolean }) | undefined
+  ok(!!mediaBtn, '找到「上传附件图片」这一行')
+  ok(!!mediaBtn && mediaBtn.className.includes('expandable'), '带明细的阶段标记为可展开')
+  ok(mediaBtn?.getAttribute('aria-expanded') === 'false', '默认收起')
+  ok(!r5.querySelector('.stage-items'), '收起时不渲染明细（不展开就不产生额外节点）')
+  ok(/2 \/ 4/.test(mediaBtn?.textContent ?? ''), '收起时显示摘要「2 / 4」')
+
+  mediaBtn?.click()
+  await act(async () => {})
+  ok(!!r5.querySelector('.stage-items'), '点击后渲染明细容器 .stage-items')
+  ok(r5.querySelectorAll('.sitem').length === 4, '明细条数与 items 一致', {
+    got: r5.querySelectorAll('.sitem').length,
+  })
+  ok(/a\.jpg/.test(r5.textContent ?? ''), '明细里显示文件名')
+  ok(/1\.2 MB/.test(r5.textContent ?? ''), '明细里显示体积')
+  ok(!!r5.querySelector('.sitem.done'), '明细区分「已完成」')
+  ok(!!r5.querySelector('.sitem.active'), '明细区分「进行中」')
+  ok(!!r5.querySelector('.sitem.fail'), '明细区分「失败」')
+  ok(mediaBtn?.getAttribute('aria-expanded') === 'true', '展开后 aria-expanded 为 true')
+
+  const parseBtn = [...r5.querySelectorAll('.stage')].find((el) =>
+    /解析工作表/.test(el.textContent ?? ''),
+  ) as (Element & { disabled: boolean }) | undefined
+  ok(parseBtn?.disabled === true, '没有明细的阶段不可点击展开')
+
   /* ============ 6. 完成态卡片 ============ */
   console.log('\n=== 6. 完成态卡片 ===')
   await act(async () => {

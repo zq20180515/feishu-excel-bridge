@@ -14,7 +14,7 @@ import {
 import type { UploadFileTiming } from './base-api'
 import { rawToText } from './infer'
 import { cellKey } from './types'
-import type { FieldBrief, MediaRef, SourceColumn, SourceSheet } from './types'
+import type { FieldBrief, MediaRef, SourceColumn, SourceSheet, StageItem } from './types'
 import { mimeOfName } from './field-meta'
 import { toBitableValue } from './value-convert'
 
@@ -28,6 +28,8 @@ export type ImportProgress = {
   detail?: string
   /** 当前处于哪个阶段（用于打勾清单） */
   stage?: ImportStage
+  /** 当前阶段的明细（上传阶段是每个附件的状态，可展开查看） */
+  items?: StageItem[]
 }
 
 export type ImportSheetResult = {
@@ -118,8 +120,14 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
   const warnings: string[] = []
   const errors: ImportResult['errors'] = []
   const results: ImportSheetResult[] = []
-  const report = (stage: ImportStage, phase: string, done: number, total: number, detail?: string) =>
-    opts.onProgress?.({ stage, phase, done, total, detail })
+  const report = (
+    stage: ImportStage,
+    phase: string,
+    done: number,
+    total: number,
+    detail?: string,
+    items?: StageItem[],
+  ) => opts.onProgress?.({ stage, phase, done, total, detail, items })
 
   /** 用户在界面上点了「取消」 */
   const stop = () => opts.shouldStop?.() === true
@@ -154,11 +162,22 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
   let uploadTimings: UploadFileTiming[] = []
   if (stop()) return cancelledResult()
   if (tasks.length) {
-    report('media', '正在上传附件图片', 0, tasks.length, `共 ${tasks.length} 个图片/附件`)
+    /** 每张图一条明细，供界面展开查看「传到哪一张了、有多大」 */
+    const mediaItems: StageItem[] = tasks.map((t) => ({
+      label: t.file.name,
+      meta: fmtSize(t.file.size || 0),
+      state: 'pending',
+    }))
+    report('media', '正在上传附件图片', 0, tasks.length, `共 ${tasks.length} 个图片/附件`, mediaItems)
+
     const { tokens, failures, timings } = await uploadFilesSerial(
       tasks.map((t) => t.file),
       opts.uploadBatchSize,
-      ({ done, total, current }) =>
+      ({ done, total, current }) => {
+        // 前 done 个已完成、第 done 个正在传、其余待传
+        for (let i = 0; i < mediaItems.length; i++) {
+          mediaItems[i].state = i < done ? 'done' : i === done ? 'active' : 'pending'
+        }
         report(
           'media',
           '正在上传附件图片',
@@ -167,10 +186,19 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
           current
             ? `正在上传 ${current.name}${current.size ? `（${fmtSize(current.size)}）` : ''}`
             : `已完成 ${done} / ${total} 个`,
-        ),
+          mediaItems,
+        )
+      },
       { shouldStop: opts.shouldStop },
     )
     uploadTimings = timings
+
+    // 回填每张图的耗时，并把失败的标出来
+    timings.forEach((t, i) => {
+      if (!mediaItems[i]) return
+      mediaItems[i].meta = `${fmtSize(t.size)} · ${(t.ms / 1000).toFixed(1)}s`
+      if (!t.ok) mediaItems[i].state = 'fail'
+    })
     tasks.forEach((t, i) => {
       const token = tokens[i]
       if (!token) return

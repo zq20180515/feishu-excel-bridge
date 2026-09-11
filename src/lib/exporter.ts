@@ -4,7 +4,7 @@ import { fetchAllRecords, getAttachmentUrls, getTable, orderedFields, withTimeou
 import { bitableValueToExcel, extractAttachments, guessExtFromMime } from './value-convert'
 import { buildXlsxBlob } from './excel-write'
 import type { OutCellImage, OutImage, OutSheet } from './excel-write'
-import type { FieldBrief } from './types'
+import type { FieldBrief, StageItem } from './types'
 
 /** 导出的四个阶段，供 UI 渲染阶段清单 */
 export type ExportStage = 'read' | 'fetch' | 'media' | 'pack'
@@ -16,6 +16,8 @@ export type ExportProgress = {
   detail?: string
   /** 当前处于哪个阶段（用于打勾清单） */
   stage?: ExportStage
+  /** 当前阶段的明细（下载阶段是每张图的状态，可展开查看） */
+  items?: StageItem[]
 }
 
 /**
@@ -90,8 +92,17 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, idx: numbe
 /**
  * 单个附件下载的超时（毫秒）。
  * 与上传同理：一个挂起的请求不能把整次导出拖死。
+ * 给的额度比上传更宽松 —— 图片可能是几 MB 的原图，慢网络下需要更久。
  */
-const IMAGE_FETCH_TIMEOUT_MS = 60_000
+const IMAGE_FETCH_TIMEOUT_MS = 120_000
+
+/** 人类可读的体积 */
+function fmtSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B'
+  const mb = bytes / 1024 / 1024
+  if (mb >= 1) return `${mb.toFixed(1)} MB`
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`
+}
 
 /** 构造超时信号；老环境不支持 AbortSignal.timeout 时降级为不超时 */
 function timeoutSignal(ms: number): AbortSignal | undefined {
@@ -122,8 +133,14 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
   const errors: string[] = []
   const summary: ExportResult['summary'] = []
   const outSheets: OutSheet[] = []
-  const report = (stage: ExportStage, phase: string, done: number, total: number, detail?: string) =>
-    opts.onProgress?.({ stage, phase, done, total, detail })
+  const report = (
+    stage: ExportStage,
+    phase: string,
+    done: number,
+    total: number,
+    detail?: string,
+    items?: StageItem[],
+  ) => opts.onProgress?.({ stage, phase, done, total, detail, items })
 
   const tableIds = opts.tableIds.filter(Boolean)
   if (!tableIds.length) throw new Error('请至少选择一个数据表')
@@ -185,7 +202,18 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
 
     // 先建 rows + 收集需要下载的附件
     const rows: (string | number | boolean | null)[][] = []
-    type ImgTask = { row: number; col: number; token: string; name: string; size: number; type: string; recordId: string; fieldId: string }
+    type ImgTask = {
+      /** 在 imgTasks 里的下标，用于回填明细状态 */
+      idx: number
+      row: number
+      col: number
+      token: string
+      name: string
+      size: number
+      type: string
+      recordId: string
+      fieldId: string
+    }
     const imgTasks: ImgTask[] = []
 
     for (let ri = 0; ri < records.length; ri++) {
@@ -219,6 +247,7 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
           }
           row.push(null)
           imgTasks.push({
+            idx: imgTasks.length,
             row: ri + 1,
             col: ci,
             token: a.token,
@@ -243,6 +272,13 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
     // 下载图片：先拿临时下载地址，再取二进制
     const cellImages: OutCellImage[] = []
     if (imgTasks.length) {
+      /** 每张图一条明细，界面展开后可看到具体下载到哪一张 */
+      const imgItems: StageItem[] = imgTasks.map((t) => ({
+        label: t.name,
+        meta: fmtSize(t.size || 0),
+        state: 'pending',
+      }))
+
       // 按 (recordId, fieldId) 分组，一次拿一组 URL
       const groups = new Map<string, ImgTask[]>()
       for (const t of imgTasks) {
@@ -253,7 +289,7 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
       }
       const groupList = [...groups.entries()]
 
-      report('media', `下载附件`, 0, imgTasks.length, `${tableName} · 下载附件图片`)
+      report('media', '下载附件图片', 0, imgTasks.length, `${tableName}`, imgItems)
 
       let done = 0
       await mapPool(groupList, 4, async ([, tasksInGroup]) => {
@@ -267,42 +303,76 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
               first.fieldId,
               first.recordId,
             ),
-            30_000,
+            60_000,
             '获取附件下载地址',
           )
         } catch {
           urls = []
         }
+
         await mapPool(tasksInGroup, 3, async (task, k) => {
+          const item = imgItems[task.idx]
           const url = urls[k]
+
           if (!url) {
             downloadFailures++
-            return
-          }
-          try {
-            const res = await fetch(url, { signal: timeoutSignal(IMAGE_FETCH_TIMEOUT_MS) })
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            const buf = await res.arrayBuffer()
-            const mime = res.headers.get('content-type') || task.type
-            const ext = guessExtFromMime(mime, task.name)
-            const img: OutImage = {
-              name: downloadName(task.name, ext),
-              ext,
-              bytes: new Uint8Array(buf),
+            if (item) {
+              item.state = 'fail'
+              item.meta = `${fmtSize(task.size || 0)} · 未取到下载地址`
             }
-            cellImages.push({ row: task.row, col: task.col, img })
-            totalImages++
-          } catch (e) {
-            downloadFailures++
-            errors.push(`附件「${task.name}」下载失败：${String((e as Error)?.message ?? e)}`)
-          } finally {
-            done++
-            if (done % 5 === 0)
-              report('media', `下载附件`, done, imgTasks.length, `${tableName} · 第 ${done} / ${imgTasks.length} 张图片`)
+            errors.push(`附件「${task.name}」未取得下载地址（临时链接生成失败）`)
+          } else {
+            /*
+             * 失败重试一次。
+             * 临时链接刚生成就失效、或网络抖动都很常见，重试往往就过了 ——
+             * 用户拿到「有 N 张没导出成功」却不知道是哪几张，体验很差，
+             * 所以这里尽量把能救的救回来。
+             */
+            for (let attempt = 0; attempt < 2; attempt++) {
+              try {
+                const res = await fetch(url, { signal: timeoutSignal(IMAGE_FETCH_TIMEOUT_MS) })
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                const buf = await res.arrayBuffer()
+                const mime = res.headers.get('content-type') || task.type
+                const ext = guessExtFromMime(mime, task.name)
+                const img: OutImage = {
+                  name: downloadName(task.name, ext),
+                  ext,
+                  bytes: new Uint8Array(buf),
+                }
+                cellImages.push({ row: task.row, col: task.col, img })
+                totalImages++
+                if (item) {
+                  item.state = 'done'
+                  item.meta = fmtSize(task.size || 0)
+                }
+                break
+              } catch (e) {
+                if (attempt === 0) continue
+                const msg = String((e as Error)?.message ?? e)
+                downloadFailures++
+                if (item) {
+                  item.state = 'fail'
+                  item.meta = `${fmtSize(task.size || 0)} · ${msg}`
+                }
+                errors.push(`附件「${task.name}」下载失败：${msg}`)
+              }
+            }
+          }
+
+          done++
+          if (done % 5 === 0 || done === imgTasks.length) {
+            report(
+              'media',
+              '下载附件图片',
+              done,
+              imgTasks.length,
+              `${tableName} · 第 ${done} / ${imgTasks.length} 张`,
+              imgItems,
+            )
           }
         })
       })
-      report('media', `下载附件`, imgTasks.length, imgTasks.length, `${tableName} · 附件处理完成`)
     }
 
     outSheets.push({
@@ -328,8 +398,20 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
   }
 
   if (downloadFailures > 0) {
+    // 把失败的文件名带出来 —— 只说「有 N 张失败」用户根本不知道该去补哪几张
+    const failedNames = [...new Set(
+      errors
+        .map((e) => e.match(/附件「(.+?)」/)?.[1] ?? '')
+        .filter(Boolean),
+    )]
     warnings.push(
-      `有 ${downloadFailures} 个附件未能下载（临时链接失效或跨域限制）。可关闭「嵌入图片」重新导出，或稍后重试。`,
+      `有 ${downloadFailures} 个附件未能下载（已自动重试 1 次）。` +
+        (failedNames.length > 0
+          ? `具体是：${failedNames.slice(0, 10).join('、')}${
+              failedNames.length > 10 ? ` 等 ${failedNames.length} 个` : ''
+            }。`
+          : '') +
+        '这些图片在导出的 Excel 里是空的，可稍后重新导出补齐。',
     )
   }
 

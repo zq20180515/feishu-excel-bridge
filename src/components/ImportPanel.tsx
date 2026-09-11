@@ -7,14 +7,14 @@ import {
   RingProgress,
   Steps,
   Tip,
-  copyText,
   formatBytes,
   formatDuration,
 } from './ui'
+import type { ProgressStageDef } from './ui'
 import { IconImage, IconInfo, IconRetry, IconSheetImage, IconTable, IconUpload } from './icons'
 import { listFields } from '../lib/base-api'
 import { parseWorkbookFile } from '../lib/excel-read'
-import { IMPORTABLE_FILE_TYPES, IMPORT_ACCEPT } from '../lib/field-meta'
+import { IMPORTABLE_FILE_TYPES, IMPORT_ACCEPT, FT } from '../lib/field-meta'
 import { runImport } from '../lib/importer'
 import type { ImportProgress, ImportResult } from '../lib/importer'
 import type { ParsedFile, SourceSheet, TableBrief } from '../lib/types'
@@ -77,7 +77,6 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
    * 有秒表用户才能确认「它在动」而不是卡死了。
    */
   const [elapsed, setElapsed] = useState(0)
-  const [copiedDiag, setCopiedDiag] = useState(false)
 
   useEffect(() => {
     if (phase !== 'running') return
@@ -187,45 +186,49 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
    * 因为记录里的附件字段要写上传后拿到的 token。
    * 没有附件时不插入该阶段，免得出现一条永远不动的空转项。
    */
-  const runStages = useMemo(() => {
-    const list = [{ key: 'parse', label: '解析工作表与表头' }]
-    if (totalMedia > 0) list.push({ key: 'media', label: '上传附件图片' })
+  /**
+   * 真正会被上传的附件：只统计「附件类型 且 已勾选」的列。
+   *
+   * 之前这里统计的是「所有列的图片总数」，于是出现「诊断说 706 个、进度显示 439 个」
+   * 的矛盾 —— 差掉的那些图片落在非附件类型的列里，本来就不会被上传。
+   */
+  const uploadMedia = (() => {
+    let count = 0
+    let bytes = 0
+    for (const s of liveSheets) {
+      const attachCols = new Set(
+        s.columns.filter((c) => c.enabled && c.targetFieldType === FT.Attachment).map((c) => c.col),
+      )
+      for (const [key, files] of s.mediaByCell) {
+        const col = Number(key.split('::')[1])
+        if (!attachCols.has(col)) continue
+        for (const f of files) {
+          count++
+          bytes += f.size || 0
+        }
+      }
+    }
+    return { count, bytes }
+  })()
+
+  /** 运行页的阶段清单；media 阶段带上每张图的明细，可展开查看 */
+  const runStages: ProgressStageDef[] = (() => {
+    const list: ProgressStageDef[] = [{ key: 'parse', label: '解析工作表与表头' }]
+    if (uploadMedia.count > 0) {
+      const onMedia = progress?.stage === 'media'
+      list.push({
+        key: 'media',
+        label: '上传附件图片',
+        summary:
+          onMedia && progress && progress.total > 1 ? `${progress.done} / ${progress.total}` : undefined,
+        items: onMedia ? progress?.items : undefined,
+      })
+    }
     list.push({ key: 'fields', label: '创建数据表与字段' }, { key: 'records', label: '写入记录' })
     return list
-  }, [totalMedia])
+  })()
 
-  /** 附件总体积 —— 直接决定上传要花多久，提前告诉用户，避免误以为卡死 */
-  const totalMediaBytes = liveSheets.reduce(
-    (n, s) =>
-      n +
-      [...s.mediaByCell.values()].reduce(
-        (m, files) => m + files.reduce((k, f) => k + (f.size || 0), 0),
-        0,
-      ),
-    0,
-  )
-
-  /** 把当前状态 + 日志拼成一段可粘贴的诊断文本（卡住时用来反馈） */
-  const copyDiagnostics = async () => {
-    const text = [
-      'BTNExcel 桥 · 导入诊断',
-      `版本：${typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'}`,
-      `文件：${parsed?.fileName ?? '—'}`,
-      `附件：${totalMedia} 个，合计 ${formatBytes(totalMediaBytes)}`,
-      `已用时：${formatDuration(elapsed)}`,
-      `当前阶段：${progress?.phase ?? '—'}`,
-      `进度：${progress?.done ?? 0} / ${progress?.total ?? 0}`,
-      progress?.detail ? `正在处理：${progress.detail}` : '',
-      '',
-      '—— 日志 ——',
-      ...logs,
-    ]
-      .filter((l) => l !== '')
-      .join('\n')
-    const okCopy = await copyText(text)
-    setCopiedDiag(okCopy)
-    window.setTimeout(() => setCopiedDiag(false), 1800)
-  }
+  /** 步骤条：选文件 → 字段映射 → 导入 */
 
   /** 回到配置态，方便连续导入多份文件 */
   const resetImport = () => {
@@ -256,9 +259,6 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
         <div className="footer-bar">
           <span className="muted">导入中 · 已用时 {formatDuration(elapsed)}</span>
           <span className="footer-actions">
-            <button className="btn ghost xs" onClick={() => void copyDiagnostics()}>
-              {copiedDiag ? '已复制' : '复制日志'}
-            </button>
             <button
               className="btn ghost xs"
               disabled={cancelling}
@@ -532,10 +532,11 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
               />
               {totalMedia > 0 && (
                 <Notice>
-                  <IconImage size={13} /> 识别到 <b>{totalMedia}</b> 个图片/附件
-                  {totalMediaBytes > 0 ? `（合计 ${formatBytes(totalMediaBytes)}）` : ''}，已默认放进「附件」字段。
-                  附件只能 <b>串行上传</b>，体积越大耗时越长 —— 几百个附件通常要几分钟到十几分钟；
-                  进度长时间停在同一处时，多半是某个大文件正在传，可以点「复制日志」查看正在传哪个。
+                  <IconImage size={13} /> 文件里识别到 <b>{totalMedia}</b> 个图片/附件，其中{' '}
+                  <b>{uploadMedia.count}</b> 个来自「附件」字段，会一起上传
+                  {uploadMedia.bytes > 0 ? `（合计 ${formatBytes(uploadMedia.bytes)}）` : ''}。
+                  附件只能 <b>串行上传</b>，几百个附件通常要几分钟到十几分钟 ——
+                  上传期间点开「上传附件图片」即可查看每张图传到哪了。
                 </Notice>
               )}
               <Notice kind="warn">

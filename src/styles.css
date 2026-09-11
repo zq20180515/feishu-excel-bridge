@@ -795,25 +795,146 @@ body {
   margin-top: 4px;
 }
 
-/* 阶段清单：整块居中，但每行图标左对齐，长短文案都能对齐 */
+/* 阶段清单：每行是一个可展开的按钮，展开后显示该阶段的明细 */
 .stage-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 16px auto 0;
   text-align: left;
+}
+
+.stage-block {
+  min-width: 0;
 }
 
 .stage {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 2px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-family: inherit;
   font-size: 12.5px;
   color: var(--text-3);
+  text-align: left;
   white-space: nowrap;
+}
+
+.stage.expandable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.stage.expandable:hover {
+  background: var(--surface-3);
+}
+
+.stage:disabled {
+  cursor: default;
+}
+
+.stage-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 展开箭头 */
+.stage-caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4.5px solid var(--text-4);
+  transition: transform 0.16s;
+}
+
+.stage-caret.open {
+  transform: rotate(180deg);
+}
+
+/* 明细列表：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */
+.stage-items {
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+
+.stage-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage-items::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+.sitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.sitem-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.sitem-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sitem-meta {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sitem.done {
+  color: var(--text-2);
+}
+.sitem.done .sitem-dot {
+  background: var(--accent);
+}
+
+.sitem.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.sitem.active .sitem-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sitem.fail {
+  color: var(--err);
+}
+.sitem.fail .sitem-dot {
+  background: var(--err);
 }
 
 .stage .sic {
@@ -856,8 +977,9 @@ body {
   border: 1.5px solid var(--line-strong);
 }
 
-/* 进行中阶段的进度后缀，如（62 / 91） */
+/* 进行中阶段的进度后缀，如 62 / 91 */
 .stage-num {
+  flex: none;
   color: var(--accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
