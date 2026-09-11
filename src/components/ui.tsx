@@ -217,6 +217,32 @@ export function RingProgress({
 }) {
   /** 当前展开了哪个阶段的明细（同时只展开一个，避免列表把侧栏撑得太长） */
   const [openStage, setOpenStage] = useState<string | null>(initialOpenStage ?? null)
+  const itemsRef = useRef<HTMLDivElement | null>(null)
+  const activeItemRef = useRef<HTMLDivElement | null>(null)
+
+  /** 展开的明细里，「进行中」那条的位置 —— 决定列表滚到哪里 */
+  const openItems = openStage ? stages?.find((s) => s.key === openStage)?.items ?? [] : []
+  const activeAt = openItems.findIndex((x) => x.state === 'active')
+
+  /**
+   * 自动把当前正在处理的条目滚进视野。
+   *
+   * 几百张图滚动起来，用户展开后看到的往往还是开头那几张，
+   * 得手动往下拖才能找到进度在哪。这里让列表跟着当前项走。
+   * 用 `scrollBy` 在**容器内**滚动而不是 `scrollIntoView`，
+   * 免得把整个侧栏也一起带跑。
+   */
+  useEffect(() => {
+    const list = itemsRef.current
+    const el = activeItemRef.current
+    if (!list || !el || activeAt < 0) return
+    const listRect = list.getBoundingClientRect()
+    const elRect = el.getBoundingClientRect()
+    // 已经在视野里就不打扰
+    if (elRect.top >= listRect.top && elRect.bottom <= listRect.bottom) return
+    const delta = elRect.top - listRect.top - list.clientHeight / 2 + elRect.height / 2
+    list.scrollBy({ top: delta, behavior: 'smooth' })
+  }, [activeAt, openStage])
 
   const safeTotal = Math.max(1, total)
   const pct = Math.max(0, Math.min(100, Math.round((done / safeTotal) * 100)))
@@ -305,9 +331,13 @@ export function RingProgress({
 
                 {/* 明细：固定高度 + 内部滚动，条目再多也不会把侧栏撑长 */}
                 {isOpen && expandable && (
-                  <div className="stage-items">
+                  <div className="stage-items" ref={itemsRef}>
                     {items.map((it, k) => (
-                      <div className={`sitem ${it.state}`} key={`${it.label}-${k}`}>
+                      <div
+                        className={`sitem ${it.state}`}
+                        key={`${it.label}-${k}`}
+                        ref={it.state === 'active' ? activeItemRef : undefined}
+                      >
                         <span className="sitem-dot" aria-hidden />
                         <span className="sitem-label" title={it.label}>
                           {it.label}

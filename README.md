@@ -173,7 +173,8 @@ opdev upload
 | --- | --- |
 | 代码托管 | GitHub 仓库（Public） |
 | 插件地址 | **GitHub Pages**（自带 HTTPS，免费，无需备案） |
-| 自动发布 | `.github/workflows/deploy.yml`：push 到 `main` → 跑 151 项测试 → 构建 → 部署 |
+| 自动发布 | `.github/workflows/deploy.yml`：push 到 `main` → 跑全部测试 → 构建 → 部署 |
+| **构建产物** | **`dist/` 必须提交进仓库**（见下方第 3 条） |
 
 详细步骤见：
 
@@ -181,11 +182,20 @@ opdev upload
 - **[`SUBMIT.md`](./SUBMIT.md)** —— 提交表单每一项该填什么（可直接复制的文案）
 - **[`SUBMIT-CHECKLIST.txt`](./SUBMIT-CHECKLIST.txt)** —— 同上，纯文本版，填表时开一屏对照复制
 
-> ⚠️ 两个硬性要求：
+> ⚠️ 三个硬性要求：
 > 1. 插件地址**必须是 HTTPS**（`localhost` 除外）—— 飞书插件本身要求，且 `showSaveFilePicker`
 >    也只在安全上下文可用；
 > 2. **不要设置 `X-Frame-Options` / CSP `frame-ancestors`**，否则飞书 iframe 加载不了。
 >    GitHub Pages 默认无此限制，可以放心用。
+> 3. **`dist/` 必须提交进仓库。** 审核方**不会**替开发者跑 `npm run build`，
+>    而是直接检查仓库里有没有构建产物 —— 首次提交时的驳回意见就是：
+>    「部署失败: 输出目录 'dist' 未找到，请开发者 npm run build 之后将产物一同提交」。
+>
+>    所以 `.gitignore` 里**刻意没有忽略 `dist/`**，改完源码要记得：
+>    ```bash
+>    npm run build && git add dist && git commit -m "build: 更新产物" && git push
+>    ```
+>    否则审核（以及 Pages 之外的直接拉取）拿到的还是旧版本。
 >
 > `vite.config.ts` 里 `base: './'` 用的是相对路径，所以**换任何仓库名 / 子路径都不用改代码**
 > —— 部署到 `https://user.github.io/whatever-name/` 也能直接跑。
