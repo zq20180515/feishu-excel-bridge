@@ -189,10 +189,11 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
             {/* ---------- 字段映射 ---------- */}
             {!isCollapsed && (
               <>
-                {/* 表头：与 .map-row 共用同一套 grid 模板，保证列对齐 */}
+                {/* 表头：与 .map-row 共用同一套 grid 模板，保证各列对齐 */}
                 <div className="map-head" aria-hidden>
                   <span />
                   <span>字段名</span>
+                  <span className="mh-count">非空</span>
                   <span />
                   <span>字段类型</span>
                 </div>
@@ -234,17 +235,23 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
                           onClick={() => setEditingKey(col.key)}
                         />
                       )}
-                      {col.mediaCount > 0 && (
-                        <span className="badge acc" title={`该列有 ${col.mediaCount} 个图片/附件`}>
+                    </div>
+
+                    {/*
+                      非空值 / 图片数：单独一列，上方表头写着「非空」——
+                      之前它跟在字段名后面、没有任何标注，用户根本猜不出这个数字是什么。
+                    */}
+                    <div className="map-count">
+                      {col.mediaCount > 0 ? (
+                        <span className="badge acc" title={`该列识别到 ${col.mediaCount} 个图片/附件`}>
                           <IconImage size={11} />
                           {col.mediaCount}
                         </span>
-                      )}
-                      {col.mediaCount === 0 && col.valueCount > 0 && (
-                        <span className="badge subtle" title={`该列有 ${col.valueCount} 个非空值`}>
+                      ) : col.valueCount > 0 ? (
+                        <span className="badge subtle" title={`该列有 ${col.valueCount} 个非空单元格`}>
                           {col.valueCount}
                         </span>
-                      )}
+                      ) : null}
                     </div>
 
                     <span className="map-arrow" aria-hidden>

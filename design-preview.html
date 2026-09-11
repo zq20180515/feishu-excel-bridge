@@ -1387,13 +1387,16 @@ select.input {
  * 目标表：下拉 + 名称合成一个控件。
  * 选「新建数据表」时右侧直接就是可编辑的名称 ——
  * 省掉「导入到 / 新表名称」两个标签和一整行高度。
+ *
+ * ⚠️ 宽度必须写死：早先不设宽度时，切到「追加到」会少掉名称输入框，
+ * 整块宽度跟着缩水，看着像控件在跳。
  */
 .dest-combo {
   display: flex;
   align-items: stretch;
+  width: 208px;
   margin-left: auto;
   flex: none;
-  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -1412,6 +1415,8 @@ select.input {
 
 .dest-select {
   appearance: none;
+  flex: 1;
+  min-width: 0;
   border: 0;
   background: transparent;
   padding: 4px 20px 4px 8px;
@@ -1419,7 +1424,6 @@ select.input {
   font-size: 11.5px;
   color: var(--text-2);
   cursor: pointer;
-  max-width: 118px;
   text-overflow: ellipsis;
   background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E&quot;);
   background-repeat: no-repeat;
@@ -1431,7 +1435,8 @@ select.input {
 }
 
 .dest-name {
-  width: 84px;
+  flex: none;
+  width: 86px;
   min-width: 0;
   border: 0;
   border-left: 1px solid var(--line);
@@ -1451,10 +1456,10 @@ select.input {
   color: var(--text-4);
 }
 
-/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证三列严格对齐 */
+/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证各列严格对齐 */
 .map-head {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
@@ -1464,6 +1469,11 @@ select.input {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text-4);
+}
+
+/* 表头里的「非空」两字居中，压在数字徽章上方 */
+.map-head .mh-count {
+  text-align: center;
 }
 
 .sheet-toggle {
@@ -1517,10 +1527,10 @@ select.input {
   border-top: 1px solid var(--line-soft);
 }
 
-/* 每行：勾选 | 字段名称 | → | 字段类型（色块 + 下拉） */
+/* 每行：勾选 | 字段名称 | 非空值 | → | 字段类型（色块 + 下拉） */
 .map-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -1546,6 +1556,14 @@ select.input {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 非空值计数：独立列，上方表头写着「非空」 */
+.map-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -2529,12 +2547,22 @@ select.input {
     row-gap: 6px;
   }
 
+  /* 极窄屏下表头与换行后的布局对不上，直接隐去 */
+  .map-head {
+    display: none;
+  }
+
   .map-arrow {
     display: none;
   }
 
   .map-name {
     grid-column: 2 / 3;
+  }
+
+  .map-count {
+    grid-column: 2 / 3;
+    justify-content: flex-start;
   }
 
   .map-type {
@@ -3893,13 +3921,16 @@ select.input {
  * 目标表：下拉 + 名称合成一个控件。
  * 选「新建数据表」时右侧直接就是可编辑的名称 ——
  * 省掉「导入到 / 新表名称」两个标签和一整行高度。
+ *
+ * ⚠️ 宽度必须写死：早先不设宽度时，切到「追加到」会少掉名称输入框，
+ * 整块宽度跟着缩水，看着像控件在跳。
  */
 .dest-combo {
   display: flex;
   align-items: stretch;
+  width: 208px;
   margin-left: auto;
   flex: none;
-  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -3918,6 +3949,8 @@ select.input {
 
 .dest-select {
   appearance: none;
+  flex: 1;
+  min-width: 0;
   border: 0;
   background: transparent;
   padding: 4px 20px 4px 8px;
@@ -3925,7 +3958,6 @@ select.input {
   font-size: 11.5px;
   color: var(--text-2);
   cursor: pointer;
-  max-width: 118px;
   text-overflow: ellipsis;
   background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E&quot;);
   background-repeat: no-repeat;
@@ -3937,7 +3969,8 @@ select.input {
 }
 
 .dest-name {
-  width: 84px;
+  flex: none;
+  width: 86px;
   min-width: 0;
   border: 0;
   border-left: 1px solid var(--line);
@@ -3957,10 +3990,10 @@ select.input {
   color: var(--text-4);
 }
 
-/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证三列严格对齐 */
+/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证各列严格对齐 */
 .map-head {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
@@ -3970,6 +4003,11 @@ select.input {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text-4);
+}
+
+/* 表头里的「非空」两字居中，压在数字徽章上方 */
+.map-head .mh-count {
+  text-align: center;
 }
 
 .sheet-toggle {
@@ -4023,10 +4061,10 @@ select.input {
   border-top: 1px solid var(--line-soft);
 }
 
-/* 每行：勾选 | 字段名称 | → | 字段类型（色块 + 下拉） */
+/* 每行：勾选 | 字段名称 | 非空值 | → | 字段类型（色块 + 下拉） */
 .map-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -4052,6 +4090,14 @@ select.input {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 非空值计数：独立列，上方表头写着「非空」 */
+.map-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -5035,12 +5081,22 @@ select.input {
     row-gap: 6px;
   }
 
+  /* 极窄屏下表头与换行后的布局对不上，直接隐去 */
+  .map-head {
+    display: none;
+  }
+
   .map-arrow {
     display: none;
   }
 
   .map-name {
     grid-column: 2 / 3;
+  }
+
+  .map-count {
+    grid-column: 2 / 3;
+    justify-content: flex-start;
   }
 
   .map-type {
@@ -5063,7 +5119,7 @@ select.input {
     grid-template-columns: 1fr;
   }
 }
-</style></head><body><div class=&quot;app&quot;><span style=&quot;display:contents&quot;><header class=&quot;topbar&quot;><div class=&quot;brand&quot;><span class=&quot;brand-mark&quot;><svg width=&quot;19&quot; height=&quot;19&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;2.5&quot; y=&quot;3.5&quot; width=&quot;19&quot; height=&quot;17&quot; rx=&quot;2.5&quot;></rect><path d=&quot;M2.5 9.5h19M9.5 9.5v11&quot;></path><circle cx=&quot;15&quot; cy=&quot;12.6&quot; r=&quot;1.4&quot;></circle><path d=&quot;m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9&quot;></path></svg></span><span class=&quot;brand-text&quot;><span class=&quot;brand-main&quot;><span class=&quot;brand-name&quot;>BTNExcel 桥</span><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;brand-feedback&quot; title=&quot;遇到问题？点这里反馈&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20.5 12.4a7.6 7.6 0 0 1-8.2 7.6 8.6 8.6 0 0 1-2.4-.4L4.5 21l1.4-4.3a8 8 0 0 1-.9-3.6 7.4 7.4 0 0 1 6.3-7.3 7.7 7.7 0 0 1 9.2 6.6Z&quot;></path><path d=&quot;M9.4 11.6h5.2M9.4 14.6h3.4&quot;></path></svg>反馈</button></span></span><span class=&quot;brand-sub&quot;>原样导入 / 带图导出</span></span></div><div class=&quot;segmented tabs&quot; role=&quot;tablist&quot;><button role=&quot;tab&quot; aria-selected=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 16V4&quot;></path><path d=&quot;m7 9 5-5 5 5&quot;></path><path d=&quot;M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V17&quot;></path></svg></span><span class=&quot;seg-label&quot;>导入 Excel</span></button><button role=&quot;tab&quot; aria-selected=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg></span><span class=&quot;seg-label&quot;>导出为 Excel</span></button></div></header></span><main class=&quot;body&quot;><div class=&quot;stack&quot;><div class=&quot;steps&quot;><span class=&quot;step done&quot;><span class=&quot;dot&quot;><svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span>选文件</span><span class=&quot;step-line&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;step cur&quot;><span class=&quot;dot&quot;>2</span>字段映射</span><span class=&quot;step-line&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;step&quot;><span class=&quot;dot&quot;>3</span>导入</span></div><section class=&quot;card&quot;><header class=&quot;card-head&quot;><div class=&quot;card-head-main&quot;><h3 class=&quot;card-title&quot;>字段映射</h3></div></header><div class=&quot;card-body&quot;><div class=&quot;map-list&quot;><div class=&quot;sheet-block&quot;><div class=&quot;sheet-head&quot;><button type=&quot;button&quot; class=&quot;sheet-toggle&quot; aria-expanded=&quot;true&quot;><span class=&quot;caret open&quot;></span><span class=&quot;sheet-name&quot;>员工档案</span></button><span class=&quot;sheet-meta&quot;>91 行 · 5/6 列</span><div class=&quot;dest-combo&quot;><select class=&quot;dest-select&quot; aria-label=&quot;导入到&quot; title=&quot;选择导入到新建数据表，还是追加到已有数据表&quot;><option value=&quot;__new__&quot; selected=&quot;&quot;>新建数据表</option><option value=&quot;tbl1&quot;>追加到：办公用品申请表</option><option value=&quot;tbl2&quot;>追加到：2024 年度采购台账</option><option value=&quot;tbl3&quot;>追加到：供应商名录</option></select><input class=&quot;dest-name&quot; placeholder=&quot;表名称&quot; title=&quot;新数据表的名称&quot; value=&quot;员工档案&quot;/></div></div><div class=&quot;map-head&quot; aria-hidden=&quot;true&quot;><span></span><span>字段名</span><span></span><span>字段类型</span></div><div class=&quot;map-rows&quot;><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 A：云南贝泰妮生物科技集团股份有限公司采购部名称全称（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>云南贝泰妮生物科技集团股份有限公司采购部名称全称</span></button><span class=&quot;badge subtle&quot; title=&quot;该列有 91 个非空值&quot;>91</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-text tk-btn&quot; title=&quot;导入后的字段类型：多行文本，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>多行文本</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 B：部门（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>部门</span></button><span class=&quot;badge subtle&quot; title=&quot;该列有 87 个非空值&quot;>87</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-single tk-btn&quot; title=&quot;导入后的字段类型：单选，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>单选</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 C：工号（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>工号</span></button><span class=&quot;badge subtle&quot; title=&quot;该列有 89 个非空值&quot;>89</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-text tk-btn&quot; title=&quot;导入后的字段类型：多行文本，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>多行文本</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 D：入职日期（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>入职日期</span></button><span class=&quot;badge subtle&quot; title=&quot;该列有 90 个非空值&quot;>90</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-time tk-btn&quot; title=&quot;导入后的字段类型：创建时间，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>创建时间</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 E：照片（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>照片</span></button><span class=&quot;badge acc&quot; title=&quot;该列有 26 个图片/附件&quot;><svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><circle cx=&quot;8.5&quot; cy=&quot;9.5&quot; r=&quot;1.6&quot;></circle><path d=&quot;m4 17 4.6-4.6a1.5 1.5 0 0 1 2.1 0l3.1 3.1a1.5 1.5 0 0 0 2.1 0L20 12&quot;></path></svg>26</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-attach tk-btn&quot; title=&quot;导入后的字段类型：附件，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>附件</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row off&quot;><label class=&quot;map-check&quot; title=&quot;启用该列的导入&quot;><input type=&quot;checkbox&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 F：是否转正（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>是否转正</span></button><span class=&quot;badge subtle&quot; title=&quot;该列有 6 个非空值&quot;>6</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-bool tk-btn&quot; title=&quot;导入后的字段类型：复选框，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>复选框</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div></div></div></div></div></section></div></main></div></body></html>" loading="lazy"></iframe>
+</style></head><body><div class=&quot;app&quot;><span style=&quot;display:contents&quot;><header class=&quot;topbar&quot;><div class=&quot;brand&quot;><span class=&quot;brand-mark&quot;><svg width=&quot;19&quot; height=&quot;19&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;2.5&quot; y=&quot;3.5&quot; width=&quot;19&quot; height=&quot;17&quot; rx=&quot;2.5&quot;></rect><path d=&quot;M2.5 9.5h19M9.5 9.5v11&quot;></path><circle cx=&quot;15&quot; cy=&quot;12.6&quot; r=&quot;1.4&quot;></circle><path d=&quot;m11.2 18 2.7-2.9a1.5 1.5 0 0 1 2.2 0l2.7 2.9&quot;></path></svg></span><span class=&quot;brand-text&quot;><span class=&quot;brand-main&quot;><span class=&quot;brand-name&quot;>BTNExcel 桥</span><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;brand-feedback&quot; title=&quot;遇到问题？点这里反馈&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><svg width=&quot;12&quot; height=&quot;12&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M20.5 12.4a7.6 7.6 0 0 1-8.2 7.6 8.6 8.6 0 0 1-2.4-.4L4.5 21l1.4-4.3a8 8 0 0 1-.9-3.6 7.4 7.4 0 0 1 6.3-7.3 7.7 7.7 0 0 1 9.2 6.6Z&quot;></path><path d=&quot;M9.4 11.6h5.2M9.4 14.6h3.4&quot;></path></svg>反馈</button></span></span><span class=&quot;brand-sub&quot;>原样导入 / 带图导出</span></span></div><div class=&quot;segmented tabs&quot; role=&quot;tablist&quot;><button role=&quot;tab&quot; aria-selected=&quot;true&quot; class=&quot;seg active&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 16V4&quot;></path><path d=&quot;m7 9 5-5 5 5&quot;></path><path d=&quot;M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V17&quot;></path></svg></span><span class=&quot;seg-label&quot;>导入 Excel</span></button><button role=&quot;tab&quot; aria-selected=&quot;false&quot; class=&quot;seg&quot;><span class=&quot;seg-icon&quot;><svg width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;M12 4v12&quot;></path><path d=&quot;m7 11 5 5 5-5&quot;></path><path d=&quot;M4 18.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5&quot;></path></svg></span><span class=&quot;seg-label&quot;>导出为 Excel</span></button></div></header></span><main class=&quot;body&quot;><div class=&quot;stack&quot;><div class=&quot;steps&quot;><span class=&quot;step done&quot;><span class=&quot;dot&quot;><svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><path d=&quot;m4.5 12.5 5 5 10-11&quot;></path></svg></span>选文件</span><span class=&quot;step-line&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;step cur&quot;><span class=&quot;dot&quot;>2</span>字段映射</span><span class=&quot;step-line&quot; aria-hidden=&quot;true&quot;></span><span class=&quot;step&quot;><span class=&quot;dot&quot;>3</span>导入</span></div><section class=&quot;card&quot;><header class=&quot;card-head&quot;><div class=&quot;card-head-main&quot;><h3 class=&quot;card-title&quot;>字段映射</h3></div></header><div class=&quot;card-body&quot;><div class=&quot;map-list&quot;><div class=&quot;sheet-block&quot;><div class=&quot;sheet-head&quot;><button type=&quot;button&quot; class=&quot;sheet-toggle&quot; aria-expanded=&quot;true&quot;><span class=&quot;caret open&quot;></span><span class=&quot;sheet-name&quot;>员工档案</span></button><span class=&quot;sheet-meta&quot;>91 行 · 5/6 列</span><div class=&quot;dest-combo&quot;><select class=&quot;dest-select&quot; aria-label=&quot;导入到&quot; title=&quot;选择导入到新建数据表，还是追加到已有数据表&quot;><option value=&quot;__new__&quot; selected=&quot;&quot;>新建数据表</option><option value=&quot;tbl1&quot;>追加到：办公用品申请表</option><option value=&quot;tbl2&quot;>追加到：2024 年度采购台账</option><option value=&quot;tbl3&quot;>追加到：供应商名录</option></select><input class=&quot;dest-name&quot; placeholder=&quot;表名称&quot; title=&quot;新数据表的名称&quot; value=&quot;员工档案&quot;/></div></div><div class=&quot;map-head&quot; aria-hidden=&quot;true&quot;><span></span><span>字段名</span><span class=&quot;mh-count&quot;>非空</span><span></span><span>字段类型</span></div><div class=&quot;map-rows&quot;><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 A：云南贝泰妮生物科技集团股份有限公司采购部名称全称（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>云南贝泰妮生物科技集团股份有限公司采购部名称全称</span></button></div><div class=&quot;map-count&quot;><span class=&quot;badge subtle&quot; title=&quot;该列有 91 个非空单元格&quot;>91</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-text tk-btn&quot; title=&quot;导入后的字段类型：多行文本，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>多行文本</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 B：部门（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>部门</span></button></div><div class=&quot;map-count&quot;><span class=&quot;badge subtle&quot; title=&quot;该列有 87 个非空单元格&quot;>87</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-single tk-btn&quot; title=&quot;导入后的字段类型：单选，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>单选</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 C：工号（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>工号</span></button></div><div class=&quot;map-count&quot;><span class=&quot;badge subtle&quot; title=&quot;该列有 89 个非空单元格&quot;>89</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-text tk-btn&quot; title=&quot;导入后的字段类型：多行文本，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>多行文本</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 D：入职日期（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>入职日期</span></button></div><div class=&quot;map-count&quot;><span class=&quot;badge subtle&quot; title=&quot;该列有 90 个非空单元格&quot;>90</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-time tk-btn&quot; title=&quot;导入后的字段类型：创建时间，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>创建时间</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row&quot;><label class=&quot;map-check&quot; title=&quot;取消该列的导入&quot;><input type=&quot;checkbox&quot; checked=&quot;&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 E：照片（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>照片</span></button></div><div class=&quot;map-count&quot;><span class=&quot;badge acc&quot; title=&quot;该列识别到 26 个图片/附件&quot;><svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;><rect x=&quot;3&quot; y=&quot;4.5&quot; width=&quot;18&quot; height=&quot;15&quot; rx=&quot;2&quot;></rect><circle cx=&quot;8.5&quot; cy=&quot;9.5&quot; r=&quot;1.6&quot;></circle><path d=&quot;m4 17 4.6-4.6a1.5 1.5 0 0 1 2.1 0l3.1 3.1a1.5 1.5 0 0 0 2.1 0L20 12&quot;></path></svg>26</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-attach tk-btn&quot; title=&quot;导入后的字段类型：附件，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>附件</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div><div class=&quot;map-row off&quot;><label class=&quot;map-check&quot; title=&quot;启用该列的导入&quot;><input type=&quot;checkbox&quot;/></label><div class=&quot;map-name&quot;><button type=&quot;button&quot; class=&quot;fld-name&quot; title=&quot;来源列 F：是否转正（点击可改名）&quot;><span class=&quot;fld-name-inner&quot;>是否转正</span></button></div><div class=&quot;map-count&quot;><span class=&quot;badge subtle&quot; title=&quot;该列有 6 个非空单元格&quot;>6</span></div><span class=&quot;map-arrow&quot; aria-hidden=&quot;true&quot;>→</span><div class=&quot;map-type&quot;><span class=&quot;pop-anchor&quot;><button type=&quot;button&quot; class=&quot;tk tk-bool tk-btn&quot; title=&quot;导入后的字段类型：复选框，点击更换&quot; aria-haspopup=&quot;dialog&quot; aria-expanded=&quot;false&quot;><i class=&quot;tk-dot&quot;></i><span class=&quot;tk-text&quot;>复选框</span><span class=&quot;tk-caret&quot; aria-hidden=&quot;true&quot;></span></button></span></div></div></div></div></div></div></section></div></main></div></body></html>" loading="lazy"></iframe>
     </section>
 
     <section class="pv">
@@ -6399,13 +6455,16 @@ select.input {
  * 目标表：下拉 + 名称合成一个控件。
  * 选「新建数据表」时右侧直接就是可编辑的名称 ——
  * 省掉「导入到 / 新表名称」两个标签和一整行高度。
+ *
+ * ⚠️ 宽度必须写死：早先不设宽度时，切到「追加到」会少掉名称输入框，
+ * 整块宽度跟着缩水，看着像控件在跳。
  */
 .dest-combo {
   display: flex;
   align-items: stretch;
+  width: 208px;
   margin-left: auto;
   flex: none;
-  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -6424,6 +6483,8 @@ select.input {
 
 .dest-select {
   appearance: none;
+  flex: 1;
+  min-width: 0;
   border: 0;
   background: transparent;
   padding: 4px 20px 4px 8px;
@@ -6431,7 +6492,6 @@ select.input {
   font-size: 11.5px;
   color: var(--text-2);
   cursor: pointer;
-  max-width: 118px;
   text-overflow: ellipsis;
   background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E&quot;);
   background-repeat: no-repeat;
@@ -6443,7 +6503,8 @@ select.input {
 }
 
 .dest-name {
-  width: 84px;
+  flex: none;
+  width: 86px;
   min-width: 0;
   border: 0;
   border-left: 1px solid var(--line);
@@ -6463,10 +6524,10 @@ select.input {
   color: var(--text-4);
 }
 
-/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证三列严格对齐 */
+/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证各列严格对齐 */
 .map-head {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
@@ -6476,6 +6537,11 @@ select.input {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text-4);
+}
+
+/* 表头里的「非空」两字居中，压在数字徽章上方 */
+.map-head .mh-count {
+  text-align: center;
 }
 
 .sheet-toggle {
@@ -6529,10 +6595,10 @@ select.input {
   border-top: 1px solid var(--line-soft);
 }
 
-/* 每行：勾选 | 字段名称 | → | 字段类型（色块 + 下拉） */
+/* 每行：勾选 | 字段名称 | 非空值 | → | 字段类型（色块 + 下拉） */
 .map-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -6558,6 +6624,14 @@ select.input {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 非空值计数：独立列，上方表头写着「非空」 */
+.map-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -7541,12 +7615,22 @@ select.input {
     row-gap: 6px;
   }
 
+  /* 极窄屏下表头与换行后的布局对不上，直接隐去 */
+  .map-head {
+    display: none;
+  }
+
   .map-arrow {
     display: none;
   }
 
   .map-name {
     grid-column: 2 / 3;
+  }
+
+  .map-count {
+    grid-column: 2 / 3;
+    justify-content: flex-start;
   }
 
   .map-type {
@@ -8905,13 +8989,16 @@ select.input {
  * 目标表：下拉 + 名称合成一个控件。
  * 选「新建数据表」时右侧直接就是可编辑的名称 ——
  * 省掉「导入到 / 新表名称」两个标签和一整行高度。
+ *
+ * ⚠️ 宽度必须写死：早先不设宽度时，切到「追加到」会少掉名称输入框，
+ * 整块宽度跟着缩水，看着像控件在跳。
  */
 .dest-combo {
   display: flex;
   align-items: stretch;
+  width: 208px;
   margin-left: auto;
   flex: none;
-  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -8930,6 +9017,8 @@ select.input {
 
 .dest-select {
   appearance: none;
+  flex: 1;
+  min-width: 0;
   border: 0;
   background: transparent;
   padding: 4px 20px 4px 8px;
@@ -8937,7 +9026,6 @@ select.input {
   font-size: 11.5px;
   color: var(--text-2);
   cursor: pointer;
-  max-width: 118px;
   text-overflow: ellipsis;
   background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E&quot;);
   background-repeat: no-repeat;
@@ -8949,7 +9037,8 @@ select.input {
 }
 
 .dest-name {
-  width: 84px;
+  flex: none;
+  width: 86px;
   min-width: 0;
   border: 0;
   border-left: 1px solid var(--line);
@@ -8969,10 +9058,10 @@ select.input {
   color: var(--text-4);
 }
 
-/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证三列严格对齐 */
+/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证各列严格对齐 */
 .map-head {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
@@ -8982,6 +9071,11 @@ select.input {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text-4);
+}
+
+/* 表头里的「非空」两字居中，压在数字徽章上方 */
+.map-head .mh-count {
+  text-align: center;
 }
 
 .sheet-toggle {
@@ -9035,10 +9129,10 @@ select.input {
   border-top: 1px solid var(--line-soft);
 }
 
-/* 每行：勾选 | 字段名称 | → | 字段类型（色块 + 下拉） */
+/* 每行：勾选 | 字段名称 | 非空值 | → | 字段类型（色块 + 下拉） */
 .map-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -9064,6 +9158,14 @@ select.input {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 非空值计数：独立列，上方表头写着「非空」 */
+.map-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -10047,12 +10149,22 @@ select.input {
     row-gap: 6px;
   }
 
+  /* 极窄屏下表头与换行后的布局对不上，直接隐去 */
+  .map-head {
+    display: none;
+  }
+
   .map-arrow {
     display: none;
   }
 
   .map-name {
     grid-column: 2 / 3;
+  }
+
+  .map-count {
+    grid-column: 2 / 3;
+    justify-content: flex-start;
   }
 
   .map-type {
@@ -11411,13 +11523,16 @@ select.input {
  * 目标表：下拉 + 名称合成一个控件。
  * 选「新建数据表」时右侧直接就是可编辑的名称 ——
  * 省掉「导入到 / 新表名称」两个标签和一整行高度。
+ *
+ * ⚠️ 宽度必须写死：早先不设宽度时，切到「追加到」会少掉名称输入框，
+ * 整块宽度跟着缩水，看着像控件在跳。
  */
 .dest-combo {
   display: flex;
   align-items: stretch;
+  width: 208px;
   margin-left: auto;
   flex: none;
-  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -11436,6 +11551,8 @@ select.input {
 
 .dest-select {
   appearance: none;
+  flex: 1;
+  min-width: 0;
   border: 0;
   background: transparent;
   padding: 4px 20px 4px 8px;
@@ -11443,7 +11560,6 @@ select.input {
   font-size: 11.5px;
   color: var(--text-2);
   cursor: pointer;
-  max-width: 118px;
   text-overflow: ellipsis;
   background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E&quot;);
   background-repeat: no-repeat;
@@ -11455,7 +11571,8 @@ select.input {
 }
 
 .dest-name {
-  width: 84px;
+  flex: none;
+  width: 86px;
   min-width: 0;
   border: 0;
   border-left: 1px solid var(--line);
@@ -11475,10 +11592,10 @@ select.input {
   color: var(--text-4);
 }
 
-/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证三列严格对齐 */
+/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证各列严格对齐 */
 .map-head {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
@@ -11488,6 +11605,11 @@ select.input {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text-4);
+}
+
+/* 表头里的「非空」两字居中，压在数字徽章上方 */
+.map-head .mh-count {
+  text-align: center;
 }
 
 .sheet-toggle {
@@ -11541,10 +11663,10 @@ select.input {
   border-top: 1px solid var(--line-soft);
 }
 
-/* 每行：勾选 | 字段名称 | → | 字段类型（色块 + 下拉） */
+/* 每行：勾选 | 字段名称 | 非空值 | → | 字段类型（色块 + 下拉） */
 .map-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -11570,6 +11692,14 @@ select.input {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 非空值计数：独立列，上方表头写着「非空」 */
+.map-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -12553,12 +12683,22 @@ select.input {
     row-gap: 6px;
   }
 
+  /* 极窄屏下表头与换行后的布局对不上，直接隐去 */
+  .map-head {
+    display: none;
+  }
+
   .map-arrow {
     display: none;
   }
 
   .map-name {
     grid-column: 2 / 3;
+  }
+
+  .map-count {
+    grid-column: 2 / 3;
+    justify-content: flex-start;
   }
 
   .map-type {
@@ -13917,13 +14057,16 @@ select.input {
  * 目标表：下拉 + 名称合成一个控件。
  * 选「新建数据表」时右侧直接就是可编辑的名称 ——
  * 省掉「导入到 / 新表名称」两个标签和一整行高度。
+ *
+ * ⚠️ 宽度必须写死：早先不设宽度时，切到「追加到」会少掉名称输入框，
+ * 整块宽度跟着缩水，看着像控件在跳。
  */
 .dest-combo {
   display: flex;
   align-items: stretch;
+  width: 208px;
   margin-left: auto;
   flex: none;
-  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -13942,6 +14085,8 @@ select.input {
 
 .dest-select {
   appearance: none;
+  flex: 1;
+  min-width: 0;
   border: 0;
   background: transparent;
   padding: 4px 20px 4px 8px;
@@ -13949,7 +14094,6 @@ select.input {
   font-size: 11.5px;
   color: var(--text-2);
   cursor: pointer;
-  max-width: 118px;
   text-overflow: ellipsis;
   background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E&quot;);
   background-repeat: no-repeat;
@@ -13961,7 +14105,8 @@ select.input {
 }
 
 .dest-name {
-  width: 84px;
+  flex: none;
+  width: 86px;
   min-width: 0;
   border: 0;
   border-left: 1px solid var(--line);
@@ -13981,10 +14126,10 @@ select.input {
   color: var(--text-4);
 }
 
-/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证三列严格对齐 */
+/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证各列严格对齐 */
 .map-head {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
@@ -13994,6 +14139,11 @@ select.input {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text-4);
+}
+
+/* 表头里的「非空」两字居中，压在数字徽章上方 */
+.map-head .mh-count {
+  text-align: center;
 }
 
 .sheet-toggle {
@@ -14047,10 +14197,10 @@ select.input {
   border-top: 1px solid var(--line-soft);
 }
 
-/* 每行：勾选 | 字段名称 | → | 字段类型（色块 + 下拉） */
+/* 每行：勾选 | 字段名称 | 非空值 | → | 字段类型（色块 + 下拉） */
 .map-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -14076,6 +14226,14 @@ select.input {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 非空值计数：独立列，上方表头写着「非空」 */
+.map-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -15059,12 +15217,22 @@ select.input {
     row-gap: 6px;
   }
 
+  /* 极窄屏下表头与换行后的布局对不上，直接隐去 */
+  .map-head {
+    display: none;
+  }
+
   .map-arrow {
     display: none;
   }
 
   .map-name {
     grid-column: 2 / 3;
+  }
+
+  .map-count {
+    grid-column: 2 / 3;
+    justify-content: flex-start;
   }
 
   .map-type {
@@ -16423,13 +16591,16 @@ select.input {
  * 目标表：下拉 + 名称合成一个控件。
  * 选「新建数据表」时右侧直接就是可编辑的名称 ——
  * 省掉「导入到 / 新表名称」两个标签和一整行高度。
+ *
+ * ⚠️ 宽度必须写死：早先不设宽度时，切到「追加到」会少掉名称输入框，
+ * 整块宽度跟着缩水，看着像控件在跳。
  */
 .dest-combo {
   display: flex;
   align-items: stretch;
+  width: 208px;
   margin-left: auto;
   flex: none;
-  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -16448,6 +16619,8 @@ select.input {
 
 .dest-select {
   appearance: none;
+  flex: 1;
+  min-width: 0;
   border: 0;
   background: transparent;
   padding: 4px 20px 4px 8px;
@@ -16455,7 +16628,6 @@ select.input {
   font-size: 11.5px;
   color: var(--text-2);
   cursor: pointer;
-  max-width: 118px;
   text-overflow: ellipsis;
   background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E&quot;);
   background-repeat: no-repeat;
@@ -16467,7 +16639,8 @@ select.input {
 }
 
 .dest-name {
-  width: 84px;
+  flex: none;
+  width: 86px;
   min-width: 0;
   border: 0;
   border-left: 1px solid var(--line);
@@ -16487,10 +16660,10 @@ select.input {
   color: var(--text-4);
 }
 
-/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证三列严格对齐 */
+/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证各列严格对齐 */
 .map-head {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
@@ -16500,6 +16673,11 @@ select.input {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text-4);
+}
+
+/* 表头里的「非空」两字居中，压在数字徽章上方 */
+.map-head .mh-count {
+  text-align: center;
 }
 
 .sheet-toggle {
@@ -16553,10 +16731,10 @@ select.input {
   border-top: 1px solid var(--line-soft);
 }
 
-/* 每行：勾选 | 字段名称 | → | 字段类型（色块 + 下拉） */
+/* 每行：勾选 | 字段名称 | 非空值 | → | 字段类型（色块 + 下拉） */
 .map-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  grid-template-columns: 18px minmax(0, 1fr) 46px 12px minmax(0, 0.92fr);
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -16582,6 +16760,14 @@ select.input {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 非空值计数：独立列，上方表头写着「非空」 */
+.map-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -17565,12 +17751,22 @@ select.input {
     row-gap: 6px;
   }
 
+  /* 极窄屏下表头与换行后的布局对不上，直接隐去 */
+  .map-head {
+    display: none;
+  }
+
   .map-arrow {
     display: none;
   }
 
   .map-name {
     grid-column: 2 / 3;
+  }
+
+  .map-count {
+    grid-column: 2 / 3;
+    justify-content: flex-start;
   }
 
   .map-type {

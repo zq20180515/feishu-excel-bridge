@@ -437,6 +437,9 @@ async function main() {
   ok(/字段名/.test(headText) && /字段类型/.test(headText), '表头写明「字段名 / 字段类型」', {
     headText,
   })
+  ok(/非空/.test(headText), '表头标明「非空」—— 那个数字不再是没来由的', { headText })
+  ok(!!host.querySelector('.map-count'), '非空值计数放在独立的 .map-count 列')
+  ok(!host.querySelector('.map-name .badge'), '计数不再挤在字段名后面（改由表头说明）')
   ok(!!host.querySelector('.dest-combo'), '目标表是「下拉 + 名称」合并控件 .dest-combo')
   ok(!!host.querySelector('.dest-name'), '选「新建数据表」时表名可就地编辑')
   ok(!host.querySelector('.sheet-target'), '旧的独立「导入到 / 新表名称」整行已移除')
