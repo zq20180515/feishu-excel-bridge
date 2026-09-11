@@ -599,6 +599,23 @@ export async function runExport(opts: ExportOptions): Promise<ExportResult> {
   return { blob, fileName, summary, warnings, errors, fileCount }
 }
 
+/** 把一次导出的结果整理成可存档的日志行（供反馈时一键复制） */
+export function buildExportLogLines(res: ExportResult, opts: {
+  packMode?: ExportPackMode
+  imageMode?: 'dispimg' | 'float'
+}): string[] {
+  const totalRecords = res.summary.reduce((n, s) => n + s.records, 0)
+  return [
+    `导出方式：${opts.packMode === 'perTable' ? '拆分多个 Excel' : '合并为一个 Excel'}`,
+    `图片嵌入方式：${opts.imageMode === 'dispimg' ? 'WPS 嵌入单元格图片' : '标准浮动图片'}`,
+    `产物：${res.fileName}（${fmtSize(res.blob.size)}）`,
+    `合计：${res.summary.length} 个工作表 · ${totalRecords} 行 · ${res.summary.reduce((n, s) => n + s.images, 0)} 张图片`,
+    ...res.summary.map((s) => `  · ${s.table}：${s.records} 条记录，${s.images} 张图片`),
+    ...res.warnings.map((w) => `  ! ${w}`),
+    ...res.errors.slice(0, 50).map((e) => `  ! ${e}`),
+  ]
+}
+
 /** 工作表名 → 安全的 xlsx 文件名；同名时补序号，避免 zip 内互相覆盖 */
 function uniqueXlsxName(sheetName: string, stamp: string, used: Set<string>): string {
   const base = (sheetName || '数据表').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) || '数据表'

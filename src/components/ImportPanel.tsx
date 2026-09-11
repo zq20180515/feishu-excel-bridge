@@ -15,6 +15,7 @@ import type { ProgressStageDef } from './ui'
 import { IconImage, IconInfo, IconRetry, IconSheetImage, IconTable, IconUpload } from './icons'
 import { listFields } from '../lib/base-api'
 import { parseWorkbookFile } from '../lib/excel-read'
+import { saveRunLog } from '../lib/diag-log'
 import { IMPORTABLE_FILE_TYPES, IMPORT_ACCEPT, FT } from '../lib/field-meta'
 import { runImport } from '../lib/importer'
 import type { ImportProgress, ImportResult } from '../lib/importer'
@@ -154,6 +155,16 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
       })
       setResult(res)
       await reloadTables()
+      // 记下这次运行 —— 用户去反馈时日志通常已经拿不到了
+      saveRunLog({
+        kind: 'import',
+        at: Date.now(),
+        fileName: parsed.fileName,
+        summary: `${liveTableCount} 张表 · ${enabledCols} 字段 · ${totalRows} 行${
+          totalMedia > 0 ? ` · ${totalMedia} 个附件（${formatBytes(uploadMedia.bytes)}）` : ''
+        }`,
+        lines: logs,
+      })
       if (res.cancelled) {
         pushLog('已取消导入')
         setWarn('已取消导入 —— 剩余内容未写入。已经创建的数据表与写入的记录会保留在表格中。')
@@ -182,6 +193,28 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
   const liveSheets = parsed?.sheets.filter((s) => !isBlankSheet(s)) ?? []
   const enabledCols = liveSheets.reduce((n, s) => n + s.columns.filter((c) => c.enabled).length, 0)
   const liveTableCount = liveSheets.filter((s) => s.columns.some((c) => c.enabled)).length
+
+  /** 所有字段是否都已启用（决定「全部启用 / 全部取消」按钮的文案） */
+  const allFieldsOn = liveSheets.length > 0 && liveSheets.every((s) => s.columns.every((c) => c.enabled))
+
+  /**
+   * 全局启用 / 取消所有字段。
+   * 直接改 `parsed` 而不是走 MappingEditor 的 onChange ——
+   * MappingEditor 是无状态的（sheets 完全来自 props），改完会自动重渲染。
+   */
+  const toggleAllFields = (on: boolean) => {
+    setParsed((p) =>
+      p
+        ? {
+            ...p,
+            sheets: p.sheets.map((s) => ({
+              ...s,
+              columns: s.columns.map((c) => ({ ...c, enabled: on })),
+            })),
+          }
+        : p,
+    )
+  }
 
   /**
    * 运行页的阶段清单。
@@ -383,21 +416,6 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
       <Steps items={STEP_LABELS} current={parsed ? 1 : 0} />
 
       <Card flush>
-        {/* 未选文件时：hero 空态（给侧栏一个明确的「从这里开始」） */}
-        {!parsed && (
-          <div className="hero">
-            <div className="hero-art">
-              <IconSheetImage size={34} />
-            </div>
-            <h2>把 Excel 搬进多维表格</h2>
-            <p>
-              图片列自动转成「附件」字段
-              <br />
-              表头、多选、多工作表原样保留
-            </p>
-          </div>
-        )}
-
         <div className="card-pad">
           <input
             ref={inputRef}
@@ -514,10 +532,15 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
             <Card
               title="字段映射"
               extra={
-                <span className="badge subtle">
-                  <IconTable size={11} />
-                  {liveTableCount} 表 / {enabledCols} 字段
-                </span>
+                <>
+                  <span className="badge subtle">
+                    <IconTable size={11} />
+                    {liveTableCount} 表 / {enabledCols} 字段
+                  </span>
+                  <button className="btn ghost xs" onClick={() => toggleAllFields(!allFieldsOn)}>
+                    {allFieldsOn ? '全部取消' : '全部启用'}
+                  </button>
+                </>
               }
             >
               <MappingEditor

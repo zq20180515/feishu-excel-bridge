@@ -117,11 +117,14 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
         const appendMode = sheet.importMode === 'append' && !!sheet.importTableId
         const enabledCount = sheet.columns.filter((c) => c.enabled).length
         const isCollapsed = !!collapsed[si]
-        const allOn = sheet.columns.every((c) => c.enabled)
 
         return (
           <div className="sheet-block" key={`sheet-${si}`}>
-            {/* ---------- 工作表头部 ---------- */}
+            {/*
+              头部：工作表名 + 统计 + 目标表。
+              目标表做成「下拉 + 名称」的组合控件（.dest-combo）——
+              选「新建数据表」时右侧直接就是可编辑的名称，省掉一整行和两个标签。
+            */}
             <div className="sheet-head">
               <button
                 type="button"
@@ -135,28 +138,12 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
               <span className="sheet-meta">
                 {sheet.totalDataRows} 行 · {enabledCount}/{sheet.columns.length} 列
               </span>
-              <button
-                type="button"
-                className="btn ghost xs"
-                style={{ marginLeft: 'auto' }}
-                onClick={() =>
-                  mutate((draft) => {
-                    const s = draft[si]
-                    const on = s.columns.every((c) => c.enabled)
-                    s.columns.forEach((c) => (c.enabled = !on))
-                  })
-                }
-              >
-                {allOn ? '全部取消' : '全部启用'}
-              </button>
-            </div>
 
-            {/* ---------- 目标表选择 ---------- */}
-            <div className="sheet-target">
-              <label className="field">
-                <span className="field-label">导入到</span>
+              <div className="dest-combo">
                 <select
-                  className="input"
+                  className="dest-select"
+                  aria-label="导入到"
+                  title="选择导入到新建数据表，还是追加到已有数据表"
                   value={sheet.importMode === 'append' ? sheet.importTableId : '__new__'}
                   onChange={(e) => {
                     const v = e.target.value
@@ -182,14 +169,12 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
                     </option>
                   ))}
                 </select>
-              </label>
-              {sheet.importMode === 'create' && (
-                <label className="field grow">
-                  <span className="field-label">新表名称</span>
+                {sheet.importMode === 'create' && (
                   <input
-                    className="input"
+                    className="dest-name"
                     value={sheet.importTableName}
-                    placeholder="新数据表名称"
+                    placeholder="表名称"
+                    title="新数据表的名称"
                     onChange={(e) => {
                       const v = e.target.value
                       mutate((draft) => {
@@ -197,13 +182,21 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
                       })
                     }}
                   />
-                </label>
-              )}
+                )}
+              </div>
             </div>
 
             {/* ---------- 字段映射 ---------- */}
             {!isCollapsed && (
-              <div className="map-rows">
+              <>
+                {/* 表头：与 .map-row 共用同一套 grid 模板，保证列对齐 */}
+                <div className="map-head" aria-hidden>
+                  <span />
+                  <span>字段名</span>
+                  <span />
+                  <span>字段类型</span>
+                </div>
+                <div className="map-rows">
                 {sheet.columns.length === 0 && <div className="empty sm">该工作表没有可导入的列</div>}
                 {sheet.columns.map((col) => (
                   <div className={col.enabled ? 'map-row' : 'map-row off'} key={col.key}>
@@ -362,7 +355,8 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              </>
             )}
           </div>
         )

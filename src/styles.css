@@ -1316,9 +1316,93 @@ select.input {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   background: var(--surface-2);
   border-bottom: 1px solid var(--line-soft);
+  flex-wrap: wrap;
+}
+
+/*
+ * 目标表：下拉 + 名称合成一个控件。
+ * 选「新建数据表」时右侧直接就是可编辑的名称 ——
+ * 省掉「导入到 / 新表名称」两个标签和一整行高度。
+ */
+.dest-combo {
+  display: flex;
+  align-items: stretch;
+  margin-left: auto;
+  flex: none;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+
+.dest-combo:hover {
+  border-color: var(--line-strong);
+}
+
+.dest-combo:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dest-select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 4px 20px 4px 8px;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  max-width: 118px;
+  text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+}
+
+.dest-select:focus {
+  outline: none;
+}
+
+.dest-name {
+  width: 84px;
+  min-width: 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+.dest-name:focus {
+  outline: none;
+  background: var(--accent-softer);
+}
+
+.dest-name::placeholder {
+  color: var(--text-4);
+}
+
+/* 字段映射表头：与 .map-row 共用同一套 grid 模板，保证三列严格对齐 */
+.map-head {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 12px minmax(0, 0.92fr);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-4);
 }
 
 .sheet-toggle {
@@ -1361,16 +1445,6 @@ select.input {
   color: var(--text-3);
   white-space: nowrap;
   flex: none;
-}
-
-.sheet-target {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line-soft);
-  background: var(--surface);
-  flex-wrap: wrap;
 }
 
 .map-rows {
@@ -1518,15 +1592,17 @@ select.input {
 
 /* ------------------------- 字段类型色块（tk = token） ------------------------- */
 
+/* 字段类型胶囊：统一的「浅色底 + 同色系深字」，色相逐一区分 */
 .tk {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
+  padding: 3px 9px 3px 8px;
   border-radius: 999px;
-  border: 1.5px solid transparent;
+  border: 0;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 550;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   flex: none;
   max-width: 100%;
@@ -1535,59 +1611,66 @@ select.input {
 }
 
 .tk .tk-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: currentColor;
+  opacity: 0.85;
   flex: none;
 }
 
 /* 文本 —— 中性灰 */
 .tk-text {
   background: #f1f5f9;
-  color: #64748b;
+  color: #475569;
 }
 
-/* 数字 —— 橙 */
+/* 数字 —— 琥珀 */
 .tk-num {
-  background: var(--orange-soft);
-  color: var(--orange);
+  background: #fef3c7;
+  color: #b45309;
 }
 
-/* 单选 / 多选 —— 紫 */
-.tk-select {
-  background: var(--violet-soft);
-  color: var(--violet);
+/* 单选 —— 紫 */
+.tk-single {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+/* 多选 —— 玫红（与单选刻意拉开色相） */
+.tk-multi {
+  background: #fce7f3;
+  color: #be185d;
 }
 
 /* 日期 —— 青 */
 .tk-time {
-  background: var(--cyan-soft);
-  color: var(--cyan);
+  background: #cffafe;
+  color: #0e7490;
 }
 
-/* 复选框 —— 绿 */
+/* 复选框 —— 翠绿 */
 .tk-bool {
-  background: var(--ok-soft);
-  color: #15803d;
+  background: #d1fae5;
+  color: #047857;
 }
 
 /* 附件 —— 主色 teal */
 .tk-attach {
-  background: var(--accent-soft);
-  color: var(--accent-ink);
+  background: #ccfbf1;
+  color: #0f766e;
 }
 
 /* 电话 / 邮箱 —— 蓝 */
 .tk-contact {
-  background: var(--blue-soft);
-  color: var(--blue);
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 /* 超链接 —— 靛 */
 .tk-link {
-  background: var(--indigo-soft);
-  color: var(--indigo);
+  background: #e0e7ff;
+  color: #4338ca;
 }
 
 /* 其它 —— 灰 */
@@ -1955,50 +2038,9 @@ select.input {
    以下为本次重设计新增的模块
    ============================================================== */
 
-/* ------------------------------ 品牌 Hero 空态 ------------------------------ */
-
 /* flush 卡片的通用内边距容器 */
 .card-pad {
   padding: 14px;
-}
-
-/* hero 自带下边距，紧随其后的内容不再重复留白 */
-.hero + .card-pad {
-  padding-top: 0;
-}
-
-.hero {
-  padding: 30px 24px 22px;
-  text-align: center;
-  background: linear-gradient(180deg, var(--accent-softer) 0%, var(--surface) 100%);
-}
-
-.hero-art {
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 16px;
-  border-radius: 18px;
-  background: var(--surface);
-  border: 1px solid var(--accent-line);
-  color: var(--accent);
-  box-shadow: 0 8px 20px -6px rgba(15, 118, 110, 0.25);
-}
-
-.hero h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: 0.2px;
-}
-
-.hero p {
-  margin: 6px 0 0;
-  font-size: 12.5px;
-  color: var(--text-2);
-  line-height: 1.6;
 }
 
 /* -------------------------------- 步骤条 -------------------------------- */
@@ -2362,6 +2404,37 @@ select.input {
 .fb-actions {
   display: flex;
   gap: 6px;
+}
+
+/* 反馈弹层里的「最近一次运行」 */
+.fb-run {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.fb-run-time {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.fb-run-sum {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-run-empty {
+  font-size: 10.5px;
+  color: var(--text-3);
 }
 
 /* 被跳过的空白工作表名 */

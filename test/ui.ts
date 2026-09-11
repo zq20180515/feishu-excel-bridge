@@ -107,13 +107,7 @@ async function main() {
   ok(!!host.querySelector('.step.cur'), '有当前步骤 .step.cur')
   ok(!host.querySelector('.step.done'), '空态下没有已完成的步骤')
 
-  ok(!!host.querySelector('.hero'), '未选文件时渲染 hero 空态 .hero')
-  ok(!!host.querySelector('.hero-art'), 'hero 有图标区 .hero-art')
-  ok(!!host.querySelector('.hero-art svg'), 'hero 图标是 SVG（矢量，不依赖图片资源）')
-  ok(/把 Excel 搬进多维表格/.test(html), 'hero 主标题文案存在')
-  ok(!!host.querySelector('.hero h2'), 'hero 主标题用 <h2>')
-  ok(!!host.querySelector('.hero p'), 'hero 副标题存在')
-
+  ok(!host.querySelector('.hero'), '已移除占空间的 hero 区')
   ok(!!host.querySelector('.card-pad'), 'flush 卡片用 .card-pad 提供内边距')
   const dz = host.querySelector('.dropzone') as HTMLElement | null
   ok(!!dz, '拖放区存在')
@@ -129,7 +123,6 @@ async function main() {
   ok(!host.querySelector('.footer-bar'), '空态下不渲染底部操作栏')
   ok(!!host.querySelector('.ftype-info'), '格式说明收进 .ftype-info（? 图标）')
   ok(!/常用格式都能直接拖入/.test(html), '不再渲染整段格式说明的提示条（改成悬停查看）')
-  ok(!!host.querySelector('.hero'), 'hero 与格式徽章可以共存（hero 在上）')
 
   /* ============ 3. 导出面板：选项行 + 底部栏 ============ */
   await act(async () => {
@@ -376,7 +369,7 @@ async function main() {
   console.log('\n=== 8. 字段映射 ===')
   const { default: MappingEditor } = await import('../src/components/MappingEditor')
 
-  const col = (i: number, header: string, enabled: boolean) => ({
+  const col = (i: number, header: string, enabled: boolean, type = 1) => ({
     key: `s::${i}`,
     sheet: '员工档案',
     col: i,
@@ -385,11 +378,11 @@ async function main() {
     samples: [],
     valueCount: 3,
     mediaCount: 0,
-    inferredType: 1,
+    inferredType: type,
     enabled,
     targetFieldId: '',
     targetFieldName: header,
-    targetFieldType: 1,
+    targetFieldType: type,
     typeTouched: false,
   })
 
@@ -405,7 +398,9 @@ async function main() {
     columns: [
       col(0, '工号', true),
       col(1, '云南贝泰妮生物科技集团股份有限公司采购部名称全称', true),
-      col(2, '是否转正', false),
+      col(2, '部门', true, 3), // 单选
+      col(3, '标签', true, 4), // 多选
+      col(4, '是否转正', false),
     ],
   }
 
@@ -425,7 +420,7 @@ async function main() {
     )
   })
   html = host.innerHTML
-  ok(host.querySelectorAll('.fld-name').length === 3, '每个字段名用 .fld-name 渲染', {
+  ok(host.querySelectorAll('.fld-name').length === 5, '每个字段名用 .fld-name 渲染', {
     got: host.querySelectorAll('.fld-name').length,
   })
   ok(!host.querySelector('.map-name input'), '未进入编辑态时字段名不是 input（超长文本不会撑破排版）')
@@ -435,6 +430,23 @@ async function main() {
   ok(!!host.querySelector('.map-arrow'), '映射行仍保留 → 指示符')
   ok(!!host.querySelector('.tk-btn'), '字段类型仍是可点击胶囊 .tk-btn')
   ok(!/每个工作表单独成表/.test(html), '已移除「每个工作表单独成表…」的说明文案')
+
+  // 字段映射表头 + 目标表合并控件
+  ok(!!host.querySelector('.map-head'), '字段映射区加了表头 .map-head')
+  const headText = host.querySelector('.map-head')?.textContent ?? ''
+  ok(/字段名/.test(headText) && /字段类型/.test(headText), '表头写明「字段名 / 字段类型」', {
+    headText,
+  })
+  ok(!!host.querySelector('.dest-combo'), '目标表是「下拉 + 名称」合并控件 .dest-combo')
+  ok(!!host.querySelector('.dest-name'), '选「新建数据表」时表名可就地编辑')
+  ok(!host.querySelector('.sheet-target'), '旧的独立「导入到 / 新表名称」整行已移除')
+  ok(!host.querySelector('.sheet-head .btn'), '「全部启用/取消」已移出工作表头部（改到大标题同级）')
+
+  // 单选 / 多选必须用不同色相
+  const tones = [...host.querySelectorAll('.tk')].map((el) => el.className).join(' ')
+  ok(/tk-single/.test(tones), '单选用独立色相 .tk-single', { tones: tones.slice(0, 120) })
+  ok(/tk-multi/.test(tones), '多选用独立色相 .tk-multi（不再与单选共用）')
+  ok(!/tk-select/.test(tones), '旧的一体式 .tk-select 已不再输出')
 
   /* ============ 9. 附件上传：超时保护与逐个兜底 ============ */
   console.log('\n=== 9. 附件上传的容错 ===')

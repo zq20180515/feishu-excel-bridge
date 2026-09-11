@@ -81,10 +81,11 @@ export function fieldTypeTone(type: number): string {
     case FT.Progress:
     case FT.Rating:
       return 'num'
-    // 选择族 —— 紫
+    // 单选 —— 紫；多选 —— 玫红（两者必须区分开，否则一眼看不出差别）
     case FT.SingleSelect:
+      return 'single'
     case FT.MultiSelect:
-      return 'select'
+      return 'multi'
     // 时间族 —— 橙
     case FT.DateTime:
     case FT.CreatedTime:

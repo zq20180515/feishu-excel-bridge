@@ -20,7 +20,8 @@ import {
   IconTable,
   IconWarn,
 } from './icons'
-import { revealExportFile, runExport, triggerDownload } from '../lib/exporter'
+import { buildExportLogLines, revealExportFile, runExport, triggerDownload } from '../lib/exporter'
+import { saveRunLog } from '../lib/diag-log'
 import type { ExportMediaSession, ExportProgress, ExportResult, MediaFailure } from '../lib/exporter'
 import type { TableBrief } from '../lib/types'
 
@@ -152,6 +153,17 @@ export default function ExportPanel({ tables, reloadTables }: Props) {
       })
       setResult(res)
       triggerDownload(res.blob, res.fileName)
+      // 记下这次运行 —— 用户去反馈时日志通常已经拿不到了
+      saveRunLog({
+        kind: 'export',
+        at: Date.now(),
+        fileName: res.fileName,
+        summary: `${res.summary.length} 个工作表 · ${res.summary.reduce((n, s) => n + s.records, 0)} 行 · ${res.summary.reduce(
+          (n, s) => n + s.images,
+          0,
+        )} 张图片`,
+        lines: buildExportLogLines(res, { packMode, imageMode }),
+      })
       setPhase('done')
     } catch (e) {
       setError(`导出失败：${String((e as Error)?.message ?? e)}`)
