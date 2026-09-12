@@ -321,7 +321,15 @@ function buildCellImagesXml(
 export async function buildXlsxBytes(sheets: OutSheet[], opts: WriteOptions): Promise<Uint8Array> {
   if (!sheets.length) throw new Error('没有可导出的数据表')
 
-  const imageMode = opts.imageMode
+  /*
+   * 兜底成 dispimg（与界面默认一致）。
+   *
+   * 早前这里直接用 opts.imageMode，若调用方漏传或传了非法值，
+   * 下面「写 dispimg」「写 float」两个分支都不会进 —— 结果图片被写进了
+   * xl/media/ 却没有任何锚点引用，产出一个「图片看不见」的坏文件，
+   * 而且全程不报错。宁可给出默认行为，也不要静默产出坏产物。
+   */
+  const imageMode: ImageMode = opts.imageMode === 'float' ? 'float' : 'dispimg'
   const fallbackPx = opts.fallbackImagePx ?? 160
   /** undefined = 原图原尺寸 */
   const forcedPx = opts.imageSizePx && opts.imageSizePx > 0 ? opts.imageSizePx : undefined

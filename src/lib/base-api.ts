@@ -236,14 +236,27 @@ let uploadChain: Promise<unknown> = Promise.resolve()
  * ⚠️ 这个保护是必须的：飞书的上传接口在个别文件上会**既不返回也不报错**地挂住，
  * 而 `await` 会一直等下去 —— 表现就是导入卡在某个数字上不动。
  *
- * 但超时**不能一刀切**：实测 439 个附件的导入里，卡住几分钟后进度又自己往前走了，
- * 说明那一批并非挂死，而是**量太大传得慢**（几十 MB 的附件 + 串行上传）。
- * 所以改成按字节量给额度，别把大文件误杀。
+ * 额度按**实测速度**定，不靠猜：
+ *   439 个附件 / 92 MB 的导入，最慢的单张也只有 0.6 秒、最大 868 KB，
+ *   平均约 0.7 秒/张 —— 折算下来串行上传约 5.4 秒/MB。
+ * 所以给到 8 秒/MB（约 50% 余量）就够，超过这个量级基本可以断定是**卡住**，
+ * 而不是「量太大传得慢」。早放弃反而更好：失败会落到明细里，可逐张重试。
  */
-const UPLOAD_TIMEOUT_MIN_MS = 90_000
-const UPLOAD_TIMEOUT_MAX_MS = 10 * 60_000
-/** 每 MB 给多少毫秒的额度（串行上传，留得宽松些） */
-const UPLOAD_TIMEOUT_PER_MB_MS = 4_000
+const UPLOAD_TIMEOUT_MIN_MS = 30_000
+const UPLOAD_TIMEOUT_MAX_MS = 3 * 60_000
+/** 每 MB 给多少毫秒的额度（按实测 5.4 秒/MB 留约 50% 余量） */
+const UPLOAD_TIMEOUT_PER_MB_MS = 8_000
+
+/**
+ * 批量上传失败后逐个兜底时，连续失败这么多个就停止兜底。
+ *
+ * 连续失败说明是接口层面的系统性问题（限流 / 网络），不是某一个文件坏了，
+ * 继续一个个试只是白等 —— 每个 15 秒的话，30 个就是 7 分半。
+ */
+const MAX_CONSECUTIVE_FALLBACK_FAILS = 5
+
+/** 逐个兜底时单文件的超时额度（实测单张 0.7 秒，15 秒足够判定异常） */
+const UPLOAD_ONE_TIMEOUT_MS = 15_000
 
 /** 按待传字节数估算超时额度：大文件给更久，但也设上限避免真的无限等 */
 function timeoutForFiles(files: { size?: number }[], floorMs = UPLOAD_TIMEOUT_MIN_MS): number {
@@ -324,7 +337,7 @@ export function uploadFilesSerial(
     /** 单文件兜底上传：批量没返回这个文件的 token 时走这里，顺便把「哪张图有问题」定位出来 */
     const uploadOne = async (idx: number): Promise<void> => {
       const f = files[idx]
-      const budget = opts?.timeoutMs ?? timeoutForFiles([f], 45_000)
+      const budget = opts?.timeoutMs ?? timeoutForFiles([f], UPLOAD_ONE_TIMEOUT_MS)
       // 先报「正在传哪个、多大」，卡住时用户也能看出是哪张图在拖
       report({ name: f.name, size: f.size || 0 })
       const t0 = Date.now()
@@ -382,6 +395,14 @@ export function uploadFilesSerial(
         slice.forEach((f) => timings.push({ name: f.name, size: f.size || 0, ms: each, ok: true }))
         done += slice.length
       } else {
+        /*
+         * 批量没成功 → 逐个兜底，顺便定位是哪个文件有问题。
+         *
+         * 但要有熔断：连续失败若干个说明是接口层面的问题（限流 / 网络），
+         * 不是某一个文件坏了。继续一个个试只是白等 ——
+         * 每个 15 秒的话，一批 30 个就是 7 分半，用户看到的就是「卡住不动」。
+         */
+        let consecutiveFail = 0
         for (let k = 0; k < slice.length; k++) {
           const idx = i + k
           if (tokens[idx]) {
@@ -389,7 +410,31 @@ export function uploadFilesSerial(
             continue
           }
           if (opts?.shouldStop?.()) break
+
+          const failsBefore = failures.length
           await uploadOne(idx)
+
+          if (failures.length > failsBefore) {
+            consecutiveFail++
+            if (consecutiveFail >= MAX_CONSECUTIVE_FALLBACK_FAILS) {
+              // 剩余的直接标记跳过，别再把时间耗在注定失败的尝试上
+              for (let j = k + 1; j < slice.length; j++) {
+                const jdx = i + j
+                if (tokens[jdx]) {
+                  done++
+                  continue
+                }
+                const f = files[jdx]
+                const message = `批量上传失败，逐个重传又连续失败 ${consecutiveFail} 个，已跳过（多半是接口限流或网络问题，可稍后重试）`
+                failures.push({ index: jdx, name: f.name, message })
+                timings.push({ name: f.name, size: f.size || 0, ms: 0, ok: false, message })
+                done++
+              }
+              break
+            }
+          } else {
+            consecutiveFail = 0
+          }
         }
       }
       report()

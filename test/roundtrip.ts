@@ -2,12 +2,20 @@
  * round-trip 测试：用写入器生成带图 xlsx -> 用读取器解析回来 -> 校验图片落点与元数据
  * 运行：npm run test:roundtrip
  */
+import { createHash } from 'node:crypto'
+import * as fs from 'node:fs'
 import JSZip from 'jszip'
+import * as XLSX from 'xlsx'
 import { buildXlsxBytes } from '../src/lib/excel-write'
 import type { OutSheet } from '../src/lib/excel-write'
 import { parseWorkbookFile, extractDispImgId } from '../src/lib/excel-read'
+import { excelSerialToMs, formatDate } from '../src/lib/infer'
+import { FT } from '../src/lib/field-meta'
 import { cellKey } from '../src/lib/types'
 import { toBitableValue } from '../src/lib/value-convert'
+
+/** 图片指纹，用于逐字节比对 */
+const hashOf = (b: Uint8Array) => createHash('md5').update(b).digest('hex')
 
 /* 1x1 红色 PNG */
 const PNG_B64 =
@@ -313,6 +321,158 @@ function checkSelectValue() {
   ok(!toBitableValue(3, '', { media: [], options }).ok, '空值不产生写入')
 }
 
+/* ------------------------------------------------------------------ */
+/* 日期：防「差一天」回归                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Excel 用「序列号」存日期，必须按 UTC 精确换算。
+ *
+ * 踩过的坑：交给 SheetJS 的 `cellDates:true` 转，它会按**本地时区**换算，
+ * 还带上上海 1900 年代的历史偏移（+08:05:43），结果整列日期**退一天** ——
+ * 用户看到的现象是「源表里没有的日期凭空出现」。
+ */
+function checkDateConversion() {
+  console.log('\n=== 日期转换（防「差一天」回归）===')
+  const cases: [number, string][] = [
+    [46053, '2026-01-31'],
+    [46054, '2026-02-01'],
+    [46023, '2026-01-01'],
+    [46052, '2026-01-30'],
+    [45999, '2025-12-08'],
+    [45809, '2025-06-01'],
+    [44197, '2021-01-01'],
+    [36526, '2000-01-01'],
+    [25569, '1970-01-01'],
+  ]
+  for (const [serial, want] of cases) {
+    const got = formatDate(new Date(excelSerialToMs(serial)))
+    ok(got === want, `序列号 ${serial} → ${want}`, { got })
+  }
+
+  const half = excelSerialToMs(46053.5)
+  ok(formatDate(new Date(half)) === '2026-01-31 12:00:00', '带小数的序列号解析出时刻', {
+    got: formatDate(new Date(half)),
+  })
+}
+
+/**
+ * 端到端：造一个 Excel 真实存法的 xlsx（`t:'n'` + 整数序列号 + 日期数字格式），
+ * 走插件解析链路，确认日期不偏移；同时确认普通数值不会被误判成日期。
+ */
+async function checkDateCellRead() {
+  console.log('\n=== 日期单元格读取（真实 Excel 结构）===')
+  const mk = (cells: Record<string, unknown>, ref: string) => {
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, { '!ref': ref, ...cells } as never, 'S1')
+    return XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
+  }
+
+  const dateBuf = mk(
+    {
+      A1: { t: 's', v: '单号' },
+      B1: { t: 's', v: '日期' },
+      A2: { t: 's', v: 'A1' },
+      B2: { t: 'n', v: 46053, z: 'yyyy-mm-dd' },
+      A3: { t: 's', v: 'A2' },
+      B3: { t: 'n', v: 46054, z: 'yyyy-mm-dd' },
+      A4: { t: 's', v: 'A3' },
+      B4: { t: 'n', v: 46023, z: 'yyyy-mm-dd' },
+    },
+    'A1:B4',
+  )
+  const parsed = await parseWorkbookFile(new File([dateBuf], 'date-test.xlsx'))
+  const sheet = parsed.sheets[0]
+  const dateCol = sheet.columns.find((c) => c.header === '日期')
+  ok(!!dateCol, '识别出「日期」列')
+  ok(dateCol?.inferredType === FT.DateTime, '该列推断为日期类型', { got: dateCol?.inferredType })
+
+  const want = ['2026-01-31', '2026-02-01', '2026-01-01']
+  want.forEach((w, r) => {
+    const raw = sheet.matrix[r + 1]?.[dateCol!.col]
+    const got = raw instanceof Date ? formatDate(raw) : String(raw)
+    ok(got === w, `第 ${r + 1} 行日期为 ${w}（不偏移）`, { got })
+  })
+
+  const numBuf = mk(
+    {
+      A1: { t: 's', v: '名称' },
+      B1: { t: 's', v: '数量' },
+      A2: { t: 's', v: 'x' },
+      B2: { t: 'n', v: 46053, z: '0' },
+    },
+    'A1:B2',
+  )
+  const parsed2 = await parseWorkbookFile(new File([numBuf], 'num-test.xlsx'))
+  const v = parsed2.sheets[0].matrix[1]?.[1]
+  ok(typeof v === 'number' && v === 46053, '数值格式的单元格保持数字（不误判为日期）', { v })
+}
+
+/* ------------------------------------------------------------------ */
+/* 图片：往返后字节必须完全一致                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 「导入后原样导出，体积变小了」是用户的真实疑问。
+ * 这里逐字节比对源表图片与导出文件里的图片，确认**没有被重编码或压缩**。
+ */
+async function checkImageBytesPreserved() {
+  console.log('\n=== 图片往返字节一致性 ===')
+  for (const name of ['示例源表_内嵌图.xlsx', '示例源表_浮动图.xlsx']) {
+    const buf = fs.readFileSync(`samples/${name}`)
+    const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
+    const parsed = await parseWorkbookFile(new File([ab], name))
+
+    const srcHash: string[] = []
+    for (const s of parsed.sheets) {
+      for (const [, list] of s.mediaByCell.entries()) {
+        for (const m of list) srcHash.push(hashOf(new Uint8Array(await m.arrayBuffer())))
+      }
+    }
+    ok(srcHash.length > 0, `${name}：源表解析出图片`, { n: srcHash.length })
+
+    const outSheets: OutSheet[] = []
+    for (const s of parsed.sheets) {
+      const headers = s.columns.map((c) => c.header)
+      const rows: (string | null)[][] = []
+      for (let r = 0; r < s.totalDataRows; r++) rows.push(new Array(headers.length).fill(null))
+      const images: OutSheet['images'] = []
+      for (const [key, list] of s.mediaByCell.entries()) {
+        const parts = key.split('::')
+        const r = Number(parts[0])
+        const ci = s.columns.findIndex((x) => x.col === Number(parts[1]))
+        if (ci < 0) continue
+        for (let k = 0; k < list.length; k++) {
+          const m = list[k]
+          images.push({
+            row: r,
+            col: k === 0 ? ci : headers.length + k,
+            img: { name: m.name, ext: 'png', bytes: new Uint8Array(await m.arrayBuffer()) },
+          })
+        }
+      }
+      outSheets.push({ name: s.name, headers, rows, images })
+    }
+
+    for (const mode of ['dispimg', 'float'] as const) {
+      const bytes = await buildXlsxBytes(outSheets, { imageMode: mode })
+      const re = await parseWorkbookFile(new File([bytes as unknown as ArrayBuffer], 'out.xlsx'))
+      const outHash: string[] = []
+      for (const s of re.sheets) {
+        for (const [, list] of s.mediaByCell.entries()) {
+          for (const m of list) outHash.push(hashOf(new Uint8Array(await m.arrayBuffer())))
+        }
+      }
+      const a = srcHash.slice().sort().join(',')
+      const b = outHash.slice().sort().join(',')
+      ok(a === b, `${name} / ${mode}：图片逐字节一致（${srcHash.length} 张）`, {
+        src: srcHash.length,
+        out: outHash.length,
+      })
+    }
+  }
+}
+
 async function main() {
   console.log('extractDispImgId 自检')
   ok(extractDispImgId('DISPIMG("ID_8805AC7ED61347F68868D9FEB2B1289C",1)') === 'ID_8805AC7ED61347F68868D9FEB2B1289C', '能解析 DISPIMG 的 ID')
@@ -326,6 +486,9 @@ async function main() {
   await checkMultiImageColumns()
   checkSelectValue()
   checkBlankSheetSkip()
+  checkDateConversion()
+  await checkDateCellRead()
+  await checkImageBytesPreserved()
 
   console.log(`\n${failed === 0 ? '全部通过 ✅' : `失败 ${failed} 项 ❌`}`)
   process.exit(failed === 0 ? 0 : 1)

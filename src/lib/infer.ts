@@ -18,11 +18,18 @@ export function rawToText(v: CellRaw): string {
   return String(v)
 }
 
+/**
+ * 把日期格式化成 `YYYY-MM-DD[ HH:mm:ss]`。
+ *
+ * 一律按 **UTC** 取值：Excel 里的日期本质是「没有时区的日期」，
+ * 我们统一用 UTC 午夜来承载它。若改用本地时区取值，
+ * 在 UTC-5 这类环境下会整体退一天（东八区则可能因历史偏移出现 23:59）。
+ */
 export function formatDate(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
-  const date = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-  if (d.getHours() || d.getMinutes() || d.getSeconds()) {
-    return `${date} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  const date = `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`
+  if (d.getUTCHours() || d.getUTCMinutes() || d.getUTCSeconds()) {
+    return `${date} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`
   }
   return date
 }

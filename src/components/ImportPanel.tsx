@@ -194,28 +194,6 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
   const enabledCols = liveSheets.reduce((n, s) => n + s.columns.filter((c) => c.enabled).length, 0)
   const liveTableCount = liveSheets.filter((s) => s.columns.some((c) => c.enabled)).length
 
-  /** 所有字段是否都已启用（决定「全部启用 / 全部取消」按钮的文案） */
-  const allFieldsOn = liveSheets.length > 0 && liveSheets.every((s) => s.columns.every((c) => c.enabled))
-
-  /**
-   * 全局启用 / 取消所有字段。
-   * 直接改 `parsed` 而不是走 MappingEditor 的 onChange ——
-   * MappingEditor 是无状态的（sheets 完全来自 props），改完会自动重渲染。
-   */
-  const toggleAllFields = (on: boolean) => {
-    setParsed((p) =>
-      p
-        ? {
-            ...p,
-            sheets: p.sheets.map((s) => ({
-              ...s,
-              columns: s.columns.map((c) => ({ ...c, enabled: on })),
-            })),
-          }
-        : p,
-    )
-  }
-
   /**
    * 运行页的阶段清单。
    * 顺序与 importer 的实际执行顺序一致 —— 附件上传发生在建表之前，
@@ -532,15 +510,10 @@ export default function ImportPanel({ tables, reloadTables }: Props) {
             <Card
               title="字段映射"
               extra={
-                <>
-                  <span className="badge subtle">
-                    <IconTable size={11} />
-                    {liveTableCount} 表 / {enabledCols} 字段
-                  </span>
-                  <button className="btn ghost xs" onClick={() => toggleAllFields(!allFieldsOn)}>
-                    {allFieldsOn ? '全部取消' : '全部启用'}
-                  </button>
-                </>
+                <span className="badge subtle">
+                  <IconTable size={11} />
+                  {liveTableCount} 表 / {enabledCols} 字段
+                </span>
               }
             >
               <MappingEditor

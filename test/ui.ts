@@ -507,6 +507,31 @@ async function main() {
   ok(stubState.calls.length === 0, 'shouldStop 为真时不发起任何上传', { calls: stubState.calls.length })
   ok(upOut.tokens.every((t) => t === null), '中断时全部文件保持空 token')
 
+  /* ---- 熔断：批量失败后逐个兜底，连续失败若干个就停 ---- */
+  /*
+   * 这是「卡在 210 不动」修复里最关键的一条保护：
+   * 批量失败后若一个个试到底，每个 15 秒的话一批 30 个就是 7 分半，
+   * 用户看到的就是界面长时间不动。连续失败说明是接口层面的问题，应当及时止损。
+   */
+  resetUploadStub()
+  stubState.mode = 'partial'
+  const manyFiles = Array.from(
+    { length: 30 },
+    (_, i) => new File([new Uint8Array(100)], `f${i}.jpg`),
+  )
+  const fuseT0 = Date.now()
+  const fuseOut = await uploadFilesSerial(manyFiles, 30, undefined, { timeoutMs: 40 })
+  const fuseMs = Date.now() - fuseT0
+  ok(fuseOut.failures.length === 30, '熔断后剩余项也全部记为失败（不静默丢弃）', {
+    n: fuseOut.failures.length,
+  })
+  ok(fuseMs < 2000, '熔断生效：没有把 30 个逐个试到底', { ms: fuseMs })
+  ok(
+    fuseOut.failures.some((f) => /已跳过/.test(f.message)),
+    '被熔断跳过的项在消息里说明原因',
+    { sample: fuseOut.failures[0]?.message },
+  )
+
   /* ============ 10. 导出：失败项可重试 / 可跳过 ============ */
   console.log('\n=== 10. 导出流程的失败处理 ===')
   const { runExport } = await import('../src/lib/exporter')

@@ -117,6 +117,9 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
         const appendMode = sheet.importMode === 'append' && !!sheet.importTableId
         const enabledCount = sheet.columns.filter((c) => c.enabled).length
         const isCollapsed = !!collapsed[si]
+        /** 本表是否全选 / 部分选中（表头的三态勾选框要用） */
+        const allOn = sheet.columns.length > 0 && enabledCount === sheet.columns.length
+        const someOn = enabledCount > 0 && !allOn
 
         return (
           <div className="sheet-block" key={`sheet-${si}`}>
@@ -190,8 +193,24 @@ export default function MappingEditor({ sheets, tables, onChange, onLoadFields }
             {!isCollapsed && (
               <>
                 {/* 表头：与 .map-row 共用同一套 grid 模板，保证各列对齐 */}
-                <div className="map-head" aria-hidden>
-                  <span />
+                <div className="map-head">
+                  {/* 第一格是「本表全选」——放在字段名前面，作用范围限于当前工作表 */}
+                  <label className="mh-check" title={allOn ? '取消本表全部字段' : '选中本表全部字段'}>
+                    <input
+                      type="checkbox"
+                      checked={allOn}
+                      ref={(el) => {
+                        // 部分选中显示为「不确定」态
+                        if (el) el.indeterminate = !allOn && someOn
+                      }}
+                      onChange={() =>
+                        mutate((draft) => {
+                          const s = draft[si]
+                          s.columns.forEach((c) => (c.enabled = !allOn))
+                        })
+                      }
+                    />
+                  </label>
                   <span>字段名</span>
                   <span className="mh-count">非空</span>
                   <span />

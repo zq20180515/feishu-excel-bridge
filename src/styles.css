@@ -1410,6 +1410,20 @@ select.input {
   color: var(--text-4);
 }
 
+/* 表头里的「本表全选」勾选框 */
+.map-head .mh-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.map-head .mh-check input {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
 /* 表头里的「非空」两字居中，压在数字徽章上方 */
 .map-head .mh-count {
   text-align: center;

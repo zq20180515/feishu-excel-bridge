@@ -11,7 +11,7 @@ import {
   resolveZipPath,
   escapeRegExp,
 } from './xml'
-import { inferFieldType, rawToText } from './infer'
+import { excelSerialToMs, inferFieldType, rawToText } from './infer'
 import { cellKey, colLetter } from './types'
 import type { CellRaw, ParsedFile, SourceColumn, SourceSheet } from './types'
 import { canExtractMedia, extOf, lookupFileType, mimeOfName, normalizeImageExt } from './field-meta'
@@ -63,6 +63,25 @@ export function extractDispImgId(formula: string): string | null {
   return bare ? bare[1].trim() : null
 }
 
+/**
+ * 判断单元格的数字格式是不是「日期/时间」。
+ *
+ * 用于识别「看起来是数字、其实是日期」的单元格 —— Excel / WPS 存日期时
+ * 存的就是序列号，靠数字格式来显示成人能看懂的样子。
+ * 先把格式里的 [条件]、"字面量"、\转义 剥离，再看是否含 y/m/d 等日期占位符。
+ */
+function isDateFormat(z: string | number | undefined): boolean {
+  if (z === undefined || z === null) return false
+  const s = String(z)
+  if (!s) return false
+  const cleaned = s
+    .replace(/\[[^\]]*\]/g, '') // [红色]、[$-409] 之类
+    .replace(/"[^"]*"/g, '') // "年" 之类的字面量
+    .replace(/\\./g, '') // \ 转义
+  // 含 y / m / d 占位符即视为日期
+  return /[ymd]/i.test(cleaned)
+}
+
 function cellRaw(cell: XLSX.CellObject | undefined): CellRaw {
   if (!cell) return null
   const t = (cell as XLSX.CellObject).t
@@ -70,7 +89,24 @@ function cellRaw(cell: XLSX.CellObject | undefined): CellRaw {
   if (v === undefined || v === null || v === '') return null
   if (t === 'd') return v instanceof Date ? v : new Date(String(v))
   if (t === 'b') return Boolean(v)
-  if (t === 'n') return typeof v === 'number' ? v : Number(v)
+  if (t === 'n') {
+    const n = typeof v === 'number' ? v : Number(v)
+    if (!Number.isFinite(n)) return null
+    /*
+     * ⚠️ 日期必须自己转，不能依赖 SheetJS 的 `cellDates: true`。
+     *
+     * 实测（Excel 真实存法：整数序列号 46053 = 2026-01-31）：
+     *   cellDates:true  → 2026-01-30T15:59:17Z  ← 东八区显示 1月30日，差一天！
+     *   excelSerialToMs → 2026-01-31T00:00:00Z  ← 正确
+     *
+     * 原因是 SheetJS 用**本地时区**换算，还带上了上海 1900 年代的历史偏移
+     * （+08:05:43），于是日期会莫名退一天 —— 表现为「表里没有的日期凭空出现」。
+     */
+    if (isDateFormat((cell as XLSX.CellObject).z)) {
+      return new Date(excelSerialToMs(n))
+    }
+    return n
+  }
   if (t === 'e') return String(v)
   if (v instanceof Date) return v
   return String(v)
@@ -239,10 +275,20 @@ export async function parseWorkbookFile(file: File, opts: ParseOptions = {}): Pr
   try {
     wb = XLSX.read(new Uint8Array(buffer), {
       type: 'array',
-      cellDates: true,
+      /*
+       * ⚠️ cellDates 必须为 false！
+       *
+       * 交给 SheetJS 转日期会因本地时区（含上海 1900 年代 +08:05:43 的历史偏移）
+       * 让日期整体退一天，表现为「源表里没有的日期凭空出现」。
+       * 我们自己按 UTC 序列号精确换算（见 cellRaw）。
+       *
+       * 代价是需要 cellNF:true 才能拿到 cell.z（数字格式），
+       * 用它来判断某个数字单元格是不是日期。
+       */
+      cellDates: false,
+      cellNF: true,
       cellFormula: true,
       cellHTML: false,
-      cellNF: false,
       sheetStubs: true,
     })
   } catch (e) {
