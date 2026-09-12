@@ -60,40 +60,6 @@ export type ImportOptions = {
   onProgress?: (p: ImportProgress) => void
 }
 
-/**
- * 附件去重键。
- *
- * 同一张图常被多个单元格引用（WPS 里一个图片对象可被多处引用，复制行时最常见），
- * 用「文件名 + 大小」判定是否为同一份内容 —— 文件名在 WPS 里就是 DISPIMG 的 ID，
- * 所以这个键足够可靠。
- */
-export function dedupKeyOf(f: File): string {
-  return `${f.name}\u0000${f.size}`
-}
-
-/**
- * 按去重键把「引用」收敛成「唯一文件」。
- *
- * 返回 `indexOf[i]` = 第 i 个引用对应 `unique` 里的下标，
- * 拿到 token 后按这个映射回填到所有引用它的单元格。
- */
-export function dedupeMedia(files: File[]): { unique: File[]; indexOf: number[] } {
-  const unique: File[] = []
-  const indexOf: number[] = []
-  const keyToIndex = new Map<string, number>()
-  for (const f of files) {
-    const key = dedupKeyOf(f)
-    let ui = keyToIndex.get(key)
-    if (ui === undefined) {
-      ui = unique.length
-      keyToIndex.set(key, ui)
-      unique.push(f)
-    }
-    indexOf.push(ui)
-  }
-  return { unique, indexOf }
-}
-
 /** 人类可读的体积 */
 function fmtSize(bytes: number): string {
   if (!bytes || bytes <= 0) return '0 B'
@@ -197,37 +163,28 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
   if (stop()) return cancelledResult()
 
   /*
-   * ① 按「文件名 + 大小」去重。
+   * ⚠️ 这里**刻意不做去重**。
    *
-   * 同一张图常常被多个单元格引用（WPS 里一个 DISPIMG 图片对象可以被多处引用，
-   * 复制行时尤其常见），原实现会把每个引用都当成一个新文件上传一遍 ——
-   * 用户那份 706 个附件的表里，同一个 ID 的图片确实重复出现。
-   * 重复上传既浪费配额、又更容易撞上服务端限流，所以这里只传一份，
-   * 拿到 token 后复用到所有引用它的单元格（附件 token 本就可以被多处引用）。
+   * 曾经按「文件名 + 大小」把附件收敛成唯一文件、再复用同一个 token ——
+   * 这个做法被否掉了，因为它有致命风险：一旦有两个**内容不同但恰好同名同大小**
+   * 的图片，后者会复用前者的 token，结果就是**单元格里被填进错误的图片、
+   * 原图丢失**。这是不可逆的数据错误，比上传慢严重得多。
+   *
+   * 文件名并不是内容指纹（WPS 的 cellimages 里 ID 与 media 的对应关系
+   * 也未必一一对应），拿它判断"是不是同一张图"太武断。
+   * 宁可多传几次、慢一点，也不能冒填错图的风险。
    */
-  const { unique: uniqueFiles, indexOf: taskToUnique } = dedupeMedia(tasks.map((t) => t.file))
-  const dupCount = tasks.length - uniqueFiles.length
-
-  if (uniqueFiles.length) {
+  if (tasks.length) {
     /** 每张图一条明细，供界面展开查看「传到哪一张了、有多大」 */
-    const mediaItems: StageItem[] = uniqueFiles.map((f) => ({
-      label: f.name,
-      meta: fmtSize(f.size || 0),
+    const mediaItems: StageItem[] = tasks.map((t) => ({
+      label: t.file.name,
+      meta: fmtSize(t.file.size || 0),
       state: 'pending',
     }))
-    report(
-      'media',
-      '正在上传附件图片',
-      0,
-      uniqueFiles.length,
-      dupCount > 0
-        ? `共 ${tasks.length} 处引用，去重后 ${uniqueFiles.length} 个文件（${dupCount} 个重复项自动复用）`
-        : `共 ${uniqueFiles.length} 个图片/附件`,
-      mediaItems,
-    )
+    report('media', '正在上传附件图片', 0, tasks.length, `共 ${tasks.length} 个图片/附件`, mediaItems)
 
     const { tokens, failures, timings } = await uploadFilesSerial(
-      uniqueFiles,
+      tasks.map((t) => t.file),
       opts.uploadBatchSize,
       ({ done, total, current }) => {
         // 前 done 个已完成、第 done 个正在传、其余待传
@@ -256,8 +213,7 @@ export async function runImport(sheets: SourceSheet[], opts: ImportOptions): Pro
       if (!t.ok) mediaItems[i].state = 'fail'
     })
     tasks.forEach((t, i) => {
-      // ② 取的是「该文件」的 token —— 重复引用共用同一份
-      const token = tokens[taskToUnique[i]]
+      const token = tokens[i]
       if (!token) return
       const key = cellKey(t.row, t.col)
       let cellMap = mediaBySheet.get(t.sheetIdx)
