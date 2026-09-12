@@ -532,6 +532,50 @@ async function main() {
     { sample: fuseOut.failures[0]?.message },
   )
 
+  /* ---- 附件去重：同一张图被多处引用时只上传一次 ---- */
+  /*
+   * 用户那份 706 个附件的表里，同一个 ID 的图片重复出现 ——
+   * 说明同一张图被多个单元格引用。原实现会把它上传多次，
+   * 既浪费配额、又更容易撞上服务端限流，所以按「文件名 + 大小」去重。
+   */
+  const { dedupeMedia, dedupKeyOf } = await import('../src/lib/importer')
+  const mkFile = (name: string, size: number) => new File([new Uint8Array(size)], name)
+
+  ok(
+    dedupKeyOf(mkFile('ID_AAA.jpg', 10)) === dedupKeyOf(mkFile('ID_AAA.jpg', 10)),
+    '同名同大小视为同一份内容',
+  )
+  ok(
+    dedupKeyOf(mkFile('ID_AAA.jpg', 10)) !== dedupKeyOf(mkFile('ID_BBB.jpg', 10)),
+    '不同文件名不合并',
+  )
+  ok(
+    dedupKeyOf(mkFile('ID_AAA.jpg', 10)) !== dedupKeyOf(mkFile('ID_AAA.jpg', 20)),
+    '同名但大小不同不合并',
+  )
+
+  const duplicated = [
+    mkFile('ID_A.jpg', 100),
+    mkFile('ID_B.jpg', 200),
+    mkFile('ID_A.jpg', 100), // 与第 1 个是同一张图
+    mkFile('ID_A.jpg', 100), // 又来一处引用
+  ]
+  const deduped = dedupeMedia(duplicated)
+  ok(deduped.unique.length === 2, '4 处引用收敛为 2 个文件', { n: deduped.unique.length })
+  ok(deduped.indexOf.join(',') === '0,1,0,0', '引用→唯一文件的下标映射正确', {
+    indexOf: deduped.indexOf.join(','),
+  })
+  ok(
+    deduped.unique[0].name === 'ID_A.jpg' && deduped.unique[1].name === 'ID_B.jpg',
+    '保持首次出现的顺序',
+  )
+
+  // 去重后真正上传的只有唯一文件
+  resetUploadStub()
+  const dedupOut = await uploadFilesSerial(deduped.unique, 10)
+  ok(dedupOut.tokens.length === 2, '只有唯一文件会被上传', { n: dedupOut.tokens.length })
+  ok(dedupOut.tokens.every((t) => !!t), '每个唯一文件都拿到 token')
+
   /* ============ 10. 导出：失败项可重试 / 可跳过 ============ */
   console.log('\n=== 10. 导出流程的失败处理 ===')
   const { runExport } = await import('../src/lib/exporter')

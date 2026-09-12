@@ -258,6 +258,20 @@ const MAX_CONSECUTIVE_FALLBACK_FAILS = 5
 /** 逐个兜底时单文件的超时额度（实测单张 0.7 秒，15 秒足够判定异常） */
 const UPLOAD_ONE_TIMEOUT_MS = 15_000
 
+/**
+ * 批次之间的间隔（毫秒）。
+ *
+ * 「卡在 210 后又自己恢复」这个现象，最符合**服务端限流 + SDK 内部退避重试**：
+ * 累计上传到一定量后服务端开始拖慢/拒绝，SDK 按退避策略反复重试，
+ * 从外面看就是「一个一百多 K 的小文件半天没动静」。
+ *
+ * 与其等它卡住再靠超时兜底，不如主动留一点间隔，别把服务端逼到限流 ——
+ * 15 批 × 250ms 才多花不到 4 秒，比卡几分钟划算得多。
+ */
+const UPLOAD_BATCH_GAP_MS = 250
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
 /** 按待传字节数估算超时额度：大文件给更久，但也设上限避免真的无限等 */
 function timeoutForFiles(files: { size?: number }[], floorMs = UPLOAD_TIMEOUT_MIN_MS): number {
   const totalMb = files.reduce((n, f) => n + (f.size || 0), 0) / 1024 / 1024
@@ -438,6 +452,11 @@ export function uploadFilesSerial(
         }
       }
       report()
+
+      // 批间留一点间隔，主动避免把服务端逼到限流（最后一批不用等）
+      if (i + size < files.length && !opts?.shouldStop?.()) {
+        await sleep(UPLOAD_BATCH_GAP_MS)
+      }
     }
     return { tokens, failures, timings }
   }
